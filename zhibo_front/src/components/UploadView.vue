@@ -80,7 +80,7 @@ const executeUpload = async (file) => {
   formData.append('file', file);
 
   try {
-    const res = await axios.post('http://localhost:8081/file/upload', formData, {
+    const res = await axios.post(`http://${window.location.hostname}:8081/file/upload`, formData, {
       onUploadProgress: (p) => {
         progress.value = Math.round((p.loaded * 100) / p.total);
       }

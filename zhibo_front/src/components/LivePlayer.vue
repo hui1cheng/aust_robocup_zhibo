@@ -69,16 +69,20 @@ const checkStatus = async () => {
     const res = await fetch('/api/v1/srs/streams');
     const data = await res.json();
     allStreams.value = data;
-    if (data[currentStream.value]) {
-      if (!isLive.value) {
-        isLive.value = true;
-        setTimeout(initPlayer, 500);
-      }
-    } else {
-      isLive.value = false;
-      if (player) { player.close(); player = null; }
+    
+    const streamExists = !!data[currentStream.value];
+    
+    // 只有在没有播放且发现有流时才启动
+    if (streamExists && !isLive.value) {
+      isLive.value = true;
+      setTimeout(initPlayer, 500);
+    } 
+    // 如果流没了，记录日志，但不立刻 close 播放器，
+    // 让 WebRTC 自己的超时机制去处理，防止轮询抖动
+    else if (!streamExists && isLive.value) {
+      console.warn("Signal may be lost, but keeping connection alive...");
     }
-  } catch (err) { console.error("无法连接后端", err); }
+  } catch (err) { console.error("API Error", err); }
 };
 
 const initPlayer = async () => {

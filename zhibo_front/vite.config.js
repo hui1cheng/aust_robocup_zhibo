@@ -1,43 +1,40 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
-// 你的局域网 IP
-// const TARGET_IP = '10.49.249.230';
-const TARGET_IP = '192.168.31.203';
+// 统一使用当前最新的局域网 IP
+const SERVER_IP = '10.5.246.240';
 
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
+  plugins: [vue()],
   resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    },
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
- server: {
+  server: {
     host: '0.0.0.0',
-    port: 8080,
-    // vite.config.js
-proxy: {
-  // 1. 找 Java 后端 (8081) 获取流列表等业务逻辑
-  '/api': {
-    target: `http://192.168.31.203:8081`,
-    changeOrigin: true
-  },
-  // 2. 找 SRS API (1985) 处理 WebRTC 信令
-  '/rtc': {
-    target: `http://192.168.31.203:1985`,
-    changeOrigin: true
-  },
-  // 3. 找 SRS 静态资源 (8080) 访问官方播放器
-  // 注意：如果你的前端也占用了 8080，请确保 SRS 的 http_server 换成了别的端口（比如 8085）
-  '/srs-static': {
-    target: `http://192.168.31.203:8080`, 
-    changeOrigin: true,
-  }
-}
+    port: 5173, // [改动] 换成 Vite 默认的 5173，避开 SRS 的 8080
+    proxy: {
+      // 找 Java 后端处理业务和文件
+      '/api': {
+        target: `http://${SERVER_IP}:8081`,
+        changeOrigin: true
+      },
+      '/file': {
+        target: `http://${SERVER_IP}:8081`,
+        changeOrigin: true
+      },
+      // 找 SRS 处理 WebRTC 信令
+      '/rtc': {
+        target: `http://${SERVER_IP}:1985`,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/rtc/, '/rtc/v1/play') // 建议加上，明确信令路径
+      },
+      // 3. 找 SRS 的 HTTP 服务器 (如果你需要访问 SRS 内部的静态资源)
+      // 这就是你改成的 8082 端口
+      '/srs-static': {
+        target: `http://10.5.246.240:8082`,
+        changeOrigin: true
+      }
+    }
   }
 })
