@@ -1,11 +1,13 @@
 package com.hui;
 
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 
-@SpringBootApplication(exclude = {DataSourceAutoConfiguration.class}) // 关键：排除数据库自动配置
+@SpringBootApplication
+@MapperScan("com.hui.mapper") // 扫描 Mapper 包
 public class Main {
   public static void main(String[] args) {
     SpringApplication.run(Main.class, args);

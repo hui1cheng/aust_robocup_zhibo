@@ -17,23 +17,27 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
-  server: {
-    host: '0.0.0.0', // 允许通过局域网 IP 访问前端界面
-    port: 8080,      // 设置前端运行端口
-    proxy: {
-      // 1. 代理 SRS 的 WebRTC 信令接口
-      '/rtc': {
-        target: `http://${TARGET_IP}:1985`,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/rtc/, '/rtc') 
-      },
-      // 2. 代理你的 Java 后端接口
-      '/api': {
-        target: `http://${TARGET_IP}:8081`,
-        changeOrigin: true,
-        // 如果你的 Java 后端没有 /api 前缀，可以取消下面的 rewrite 注释
-        // rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
+ server: {
+    host: '0.0.0.0',
+    port: 8080,
+    // vite.config.js
+proxy: {
+  // 1. 找 Java 后端 (8081) 获取流列表等业务逻辑
+  '/api': {
+    target: `http://192.168.31.203:8081`,
+    changeOrigin: true
+  },
+  // 2. 找 SRS API (1985) 处理 WebRTC 信令
+  '/rtc': {
+    target: `http://192.168.31.203:1985`,
+    changeOrigin: true
+  },
+  // 3. 找 SRS 静态资源 (8080) 访问官方播放器
+  // 注意：如果你的前端也占用了 8080，请确保 SRS 的 http_server 换成了别的端口（比如 8085）
+  '/srs-static': {
+    target: `http://192.168.31.203:8080`, 
+    changeOrigin: true,
+  }
+}
   }
 })

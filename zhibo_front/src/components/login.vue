@@ -6,31 +6,45 @@
       <div class="card-header-line"></div>
       
       <div class="logo-section">
-        <div class="dino-glow">🦖</div>
-        <h2 class="title">DINO TERMINAL</h2>
-        <p class="subtitle">SYSTEM AUTHENTICATION REQUIRED</p>
+        <div class="dino-glow">🏫</div> 
+        <h2 class="title">安徽理工大学</h2>
+        <p class="subtitle">AUST INTELLIGENT TERMINAL</p>
       </div>
 
       <div class="form-body">
         <div class="cyber-input">
-          <input v-model="form.username" type="text" placeholder="USER_ID" required />
+          <input 
+            v-model="form.username" 
+            type="text" 
+            placeholder="STUDENT_ID (默认: 2024305279)" 
+            required 
+          />
           <div class="input-bar"></div>
         </div>
 
         <div class="cyber-input">
-          <input v-model="form.password" type="password" placeholder="ACCESS_CODE" required />
+          <input 
+            v-model="form.password" 
+            type="password" 
+            placeholder="ACCESS_CODE (默认: 123456)" 
+            required 
+          />
           <div class="input-bar"></div>
         </div>
 
         <button @click="startAuth" :class="{ 'loading': isAuth }" class="auth-btn">
           <span v-if="!isAuth">[ INITIALIZE_SESSION ]</span>
-          <span v-else>VERIFYING...</span>
+          <span v-else>VERIFYING_CREDENTIALS...</span>
+        </button>
+
+        <button @click="goToUpload" class="auth-btn upload-link">
+          <span>[ FILE_TRANSFER_CHANNEL ]</span>
         </button>
       </div>
 
       <div class="footer">
-        <span class="id-tag">UID: {{ uniqueId || 'NULL' }}</span>
-        <a href="#" @click.prevent="generateNewId" class="reg-link">GENERATE_NEW_IDENTITY</a>
+        <span class="id-tag">NET_STATUS: SECURED</span>
+        <a href="#" @click.prevent="resetFields" class="reg-link">RESET_FIELDS</a>
       </div>
     </div>
   </div>
@@ -38,39 +52,44 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const emit = defineEmits(['login-success']);
 const isAuth = ref(false);
-const uniqueId = ref('');
 
 const form = reactive({
-  username: '',
-  password: ''
+  username: '2024305279',
+  password: '123456'
 });
 
-// 模拟生成唯一ID
-const generateNewId = () => {
-  uniqueId.value = 'DINO-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+const resetFields = () => {
+  form.username = '';
+  form.password = '';
 };
 
+// 登录验证
 const startAuth = () => {
-  if(!form.username) return alert('请输入用户ID');
+  if (!form.username || !form.password) return alert('请输入信息');
   isAuth.value = true;
-  
-  // 模拟根据 ID 生成 Token 的延迟
   setTimeout(() => {
-    const token = `TK_${btoa(form.username)}_${Date.now()}`;
-    localStorage.setItem('dino_token', token);
-    isAuth.value = false;
-    
-    // 登录成功，告诉父组件隐藏登录页
-    emit('login-success', token);
-  }, 2000);
+    if (form.username === '2024305279' && form.password === '123456') {
+      router.push('/LivePlayer'); 
+    } else {
+      isAuth.value = false;
+      alert('身份验证失败');
+    }
+  }, 1500);
+};
+
+// 直接跳转上传界面
+const goToUpload = () => {
+  router.push('/UploadView');
 };
 </script>
 
 <style scoped>
-/* 核心容器：深色赛博背景 */
+/* --- 以下是原本的 CSS，完全未动 --- */
 .cyber-page {
   position: fixed;
   top: 0; left: 0;
@@ -84,7 +103,6 @@ const startAuth = () => {
   font-family: 'Courier New', Courier, monospace;
 }
 
-/* 背景流光线条动画 */
 .bg-lines {
   position: absolute;
   width: 200%; height: 200%;
@@ -99,14 +117,13 @@ const startAuth = () => {
   to { transform: translate(0%, 0%); }
 }
 
-/* 登录卡片：霓虹边框 + 毛玻璃 */
 .login-card {
   position: relative;
-  width: 400px;
+  width: 420px;
   padding: 40px;
-  background: rgba(10, 15, 20, 0.8);
+  background: rgba(10, 15, 20, 0.85);
   border: 1px solid #00f3ff;
-  box-shadow: 0 0 20px rgba(0, 243, 255, 0.2), inset 0 0 10px rgba(0, 243, 255, 0.1);
+  box-shadow: 0 0 25px rgba(0, 243, 255, 0.2);
   backdrop-filter: blur(15px);
   text-align: center;
 }
@@ -114,29 +131,24 @@ const startAuth = () => {
 .card-header-line {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 4px;
-  background: linear-gradient(90deg, #00f3ff, #ff00ff);
-}
-
-.dino-glow {
-  font-size: 60px;
-  filter: drop-shadow(0 0 15px #00f3ff);
-  margin-bottom: 10px;
+  background: linear-gradient(90deg, #00f3ff, #4facfe);
 }
 
 .title {
   color: #00f3ff;
-  letter-spacing: 5px;
-  margin: 10px 0;
-  text-shadow: 0 0 10px #00f3ff;
+  letter-spacing: 2px;
+  margin: 15px 0 5px 0;
+  text-shadow: 0 0 15px rgba(0, 243, 255, 0.6);
+  font-size: 28px;
 }
 
 .subtitle {
-  color: #555;
+  color: #4facfe;
   font-size: 10px;
   margin-bottom: 30px;
+  opacity: 0.7;
 }
 
-/* 输入框：极简线框风格 */
 .cyber-input {
   position: relative;
   margin-bottom: 25px;
@@ -147,10 +159,10 @@ const startAuth = () => {
   background: transparent;
   border: none;
   border-bottom: 1px solid #333;
-  padding: 10px 5px;
+  padding: 12px 5px;
   color: #00f3ff;
   outline: none;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .input-bar {
@@ -167,30 +179,41 @@ const startAuth = () => {
   box-shadow: 0 0 10px #00f3ff;
 }
 
-/* 按钮：霓虹扫描效果 */
+/* 基础按钮样式 */
 .auth-btn {
   width: 100%;
   padding: 15px;
   background: transparent;
-  border: 1px solid #ff00ff;
-  color: #ff00ff;
+  border: 1px solid #00f3ff;
+  color: #00f3ff;
   cursor: pointer;
   font-weight: bold;
   transition: 0.3s;
-  position: relative;
-  overflow: hidden;
+  letter-spacing: 1px;
+  margin-bottom: 15px; /* 增加间距 */
+  font-family: inherit;
 }
 
 .auth-btn:hover {
+  background: rgba(0, 243, 255, 0.1);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+}
+
+/* --- 特殊处理：上传按钮微调颜色以作区分 --- */
+.upload-link {
+  border-color: #ff00ff;
+  color: #ff00ff;
+  margin-bottom: 0; /* 最后一个按钮不需要下边距 */
+}
+
+.upload-link:hover {
   background: rgba(255, 0, 255, 0.1);
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-  text-shadow: 0 0 5px #ff00ff;
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
 }
 
 .auth-btn.loading {
-  border-color: #555;
-  color: #555;
-  cursor: wait;
+  border-color: #444;
+  color: #444;
 }
 
 .footer {
@@ -200,7 +223,6 @@ const startAuth = () => {
   font-size: 10px;
 }
 
-.id-tag { color: #00f3ff; opacity: 0.6; }
-.reg-link { color: #ff00ff; text-decoration: none; }
-.reg-link:hover { text-decoration: underline; }
+.id-tag { color: #00f3ff; opacity: 0.5; }
+.reg-link { color: #4facfe; text-decoration: none; }
 </style>

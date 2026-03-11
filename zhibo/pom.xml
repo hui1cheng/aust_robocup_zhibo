@@ -18,25 +18,52 @@
   <properties>
     <java.version>17</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <mybatis-plus.version>3.5.5</mybatis-plus.version>
+    <mybatis-plus.version>3.5.9</mybatis-plus.version> <!-- 升级到更稳定版本 -->
   </properties>
 
   <dependencies>
+    <!-- Spring Web 核心 -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
 
+
+    <!-- MyBatis-Plus Spring Boot 3 适配版 -->
     <dependency>
       <groupId>com.baomidou</groupId>
       <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
       <version>${mybatis-plus.version}</version>
     </dependency>
 
+    <!-- PostgreSQL 驱动 -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.3</version>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- Lombok（修复空格问题） -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.30</version>
+      <optional>true</optional> <!-- 移除多余空格 -->
+    </dependency>
+
+    <!-- 测试依赖 -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
+    </dependency>
+
+
+    <dependency>
+      <groupId>io.minio</groupId>
+      <artifactId>minio</artifactId>
+      <version>8.5.14</version>
     </dependency>
   </dependencies>
 
@@ -45,6 +72,8 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <!-- 可选：指定插件版本，避免和 Spring Boot 版本不匹配 -->
+        <version>3.2.0</version>
       </plugin>
     </plugins>
   </build>

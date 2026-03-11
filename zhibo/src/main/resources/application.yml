@@ -1,2 +1,38 @@
 server:
-  port: 8081
+  port: 8081 # 服务端口，保持不变
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  # 数据源核心配置（必须匹配你的PostgreSQL实际环境）
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # 注意：localhost:5432 是PostgreSQL默认端口，root_db需替换为你实际的数据库名
+    url: jdbc:postgresql://localhost:5432/root_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8
+    username: root # 替换为你的PostgreSQL实际用户名（默认是postgres，不是root）
+    password: root # 替换为你的PostgreSQL实际密码
+
+# MyBatis-Plus配置（修正语法错误）
+mybatis-plus:
+  # 实体类别名包（确保包路径正确）
+  type-aliases-package: com.hui.entity
+  # Mapper.xml文件路径（如果没有xml文件，可注释这行）
+  mapper-locations: classpath:mapper/**/*.xml
+  # 全局配置
+  global-config:
+    db-config:
+      id-type: auto # 主键自增（需数据库表主键设置为自增）
+      # 表前缀：如果你的表名有统一前缀（如t_user），则写t_；没有则删除这行
+      table-prefix: t_
+  # 基础配置（开启驼峰转换、日志，方便调试）
+  configuration:
+    map-underscore-to-camel-case: true # 下划线转驼峰（必开）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印SQL日志（调试用）
+
+minio:
+  endpoint: http://127.0.0.1:9000
+  accessKey: root
+  secretKey: root123456
+  bucketName: my-files # 启动后记得到控制台手动创建一个同名的 Bucket
