@@ -89,8 +89,12 @@ const initPlayer = async () => {
   if (player) player.close();
   player = RoboCupStreamer();
   const url = `webrtc://${window.location.hostname}/live/${currentStream.value}`;
+  console.log(window.location.hostname)
+  console.log(url)
+  const apiUrl = `http://${window.location.hostname}:1985/rtc/v1/play/`
+
   try {
-    await player.play(url);
+    await player.play(url,apiUrl);
     const videoDom = document.getElementById('rtc_media_player');
     if (videoDom) videoDom.srcObject = player.stream;
   } catch (e) { console.error("播放失败:", e); }

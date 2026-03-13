@@ -14,7 +14,7 @@ const routes = [
   },
   // 首页路由
   {
-    path: '/LivePlaye',          // 路由路径
+    path: '/LivePlayer',          // 路由路径
     name: 'LivePlayer',           // 路由名称（可选，用于编程式导航）
     component: LivePlayer,        // 对应组件
     meta: { title: '首页' } // 元信息（可选，用于设置页面标题、权限等）

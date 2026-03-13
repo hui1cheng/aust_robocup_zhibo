@@ -32,7 +32,7 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印SQL日志（调试用）
 
 minio:
-  endpoint: http://10.5.246.240:9000
+  endpoint: http://192.168.31.203:9000
   accessKey: root
-  secretKey: root123456
+  secretKey: Root1234!
   bucketName: my-files # 启动后记得到控制台手动创建一个同名的 Bucket
