@@ -6,47 +6,43 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/v1/srs")
-@CrossOrigin // 允许 Vue 前端跨域访问
+@CrossOrigin // 允许前端跨域
 public class SrsController {
 
-    // 用来记录当前在线的直播间（Key: 流名称, Value: 客户端IP）
+    // Key: 流名称（livestream_2d/3d/rescue）, Value: 推流PC的IP
     private static final Map<String, String> onlineStreams = new ConcurrentHashMap<>();
 
     /**
-     * OBS 开始推流时，SRS 会访问这个接口
+     * OBS推流到你的SRS时，SRS会调用这个接口
      */
     @PostMapping("/on_publish")
     public int onPublish(@RequestBody Map<String, Object> params) {
-        String ip = (String) params.get("ip");
+        try {
+            String stream = (String) params.get("stream"); // 推流码（如 livestream_2d）
+            String clientIp = (String) params.get("ip"); // 推流PC的IP（3台PC的局域网IP）
 
-        // 打印全部参数，你会发现新大陆（比如 client_id, vhost 等）
-        System.out.println(">>> 完整参数: " + params);
-
-        String stream = (String) params.get("stream");
-        System.out.println(">>> 状态：[" + stream + "] 正在尝试开播...");
-
-        // 业务逻辑：记录到内存里，表示直播间已开播
-        onlineStreams.put(stream, ip);
-
-        // 返回 0 代表准许推流；返回 -1 代表拒绝
-        return 0;
+            System.out.printf(">>> [%s] 推流成功 | 推流PC: %s%n", stream, clientIp);
+            onlineStreams.put(stream, clientIp); // 记录流
+            return 0; // 准许推流
+        } catch (Exception e) {
+            System.err.println("推流回调异常: " + e.getMessage());
+            return -1;
+        }
     }
 
     /**
-     * OBS 停止推流或网络断开时
+     * OBS停止推流时，SRS调用这个接口
      */
     @PostMapping("/on_unpublish")
     public int onUnpublish(@RequestBody Map<String, Object> params) {
         String stream = (String) params.get("stream");
-        System.out.println("<<<<<< 直播结束，流名称: " + stream);
-
-        // 从在线列表中移除
         onlineStreams.remove(stream);
+        System.out.println("<<<<<< [" + stream + "] 推流结束");
         return 0;
     }
 
     /**
-     * 给 Vue 前端调用的接口：获取当前有哪些人在直播
+     * 前端获取所有在线流（供页面展示）
      */
     @GetMapping("/streams")
     public Map<String, String> getStreams() {

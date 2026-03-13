@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 // 统一使用当前最新的局域网 IP
-const SERVER_IP = '192.168.31.203';
+const SERVER_IP = '10.4.116.183';
 
 export default defineConfig({
   plugins: [vue()],
@@ -32,7 +32,7 @@ export default defineConfig({
       // 3. 找 SRS 的 HTTP 服务器 (如果你需要访问 SRS 内部的静态资源)
       // 这就是你改成的 8082 端口
       '/srs-static': {
-        target: `http://192.168.31.203:8082`,
+        target: `http://10.134.58.230:8082`,
         changeOrigin: true
       }
     }

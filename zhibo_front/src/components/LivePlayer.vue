@@ -88,16 +88,36 @@ const checkStatus = async () => {
 const initPlayer = async () => {
   if (player) player.close();
   player = RoboCupStreamer();
-  const url = `webrtc://${window.location.hostname}/live/${currentStream.value}`;
-  console.log(window.location.hostname)
-  console.log(url)
-  const apiUrl = `http://${window.location.hostname}:1985/rtc/v1/play/`
+  
+  const srsIp = "10.4.116.183"; 
+  const url = `webrtc://${srsIp}/live/${currentStream.value}`;
+  const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`;
+
+  console.log("=== 播放参数 ===");
+  console.log("流地址：", url);
+  console.log("API地址：", apiUrl);
+  console.log("当前流：", currentStream.value);
 
   try {
-    await player.play(url,apiUrl);
+    // 增加超时限制
+    const playPromise = player.play(url, apiUrl);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("播放请求超时")), 10000)
+    );
+    await Promise.race([playPromise, timeoutPromise]);
+    
     const videoDom = document.getElementById('rtc_media_player');
-    if (videoDom) videoDom.srcObject = player.stream;
-  } catch (e) { console.error("播放失败:", e); }
+    if (videoDom) {
+      videoDom.srcObject = player.stream;
+      // 强制播放（有些浏览器 muted 也需要手动 play）
+      videoDom.play().catch(e => console.warn("视频播放失败：", e));
+    }
+  } catch (e) { 
+    console.error("播放失败详情:", e); 
+    isLive.value = false;
+    // 提示用户
+    alert(`播放${currentStream.value}失败：${e.message}`);
+  }
 };
 
 const switchStream = (name) => {

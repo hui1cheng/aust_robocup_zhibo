@@ -151,26 +151,18 @@ const checkStatus = async () => {
 const initPlayer = async () => {
   if (player) player.close();
   player = RoboCupStreamer();
-  // 流地址格式：webrtc://域名/live/房间标识_流名称
-  const url = `webrtc://${window.location.hostname}/live/${currentStream.value}`;
-  const apiUrl = `http://${window.location.hostname}:1985/rtc/v1/play/`;
-
-  console.log(`[${currentRoom.value}] 播放地址:`, url);
   
+  // 固定用你的SRS服务器IP（如 192.168.31.203），无需动态获取
+  const srsIp = "192.168.31.203"; // 替换为你的SRS局域网IP
+  const url = `webrtc://${srsIp}/live/${currentStream.value}`;
+  const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`; // SRS的WebRTC API端口
+
   try {
     await player.play(url, apiUrl);
     const videoDom = document.getElementById('rtc_media_player');
-    if (videoDom) {
-      videoDom.srcObject = player.stream;
-      // 按房间设置视频滤镜（差异化视觉）
-      videoDom.style.filter = roomConfig.value[currentRoom.value].themeColor === '#00f3ff' 
-        ? 'sepia(20%) hue-rotate(160deg)' 
-        : roomConfig.value[currentRoom.value].themeColor === '#ff00ff'
-          ? 'sepia(30%) hue-rotate(280deg) saturate(1.5)'
-          : 'sepia(40%) hue-rotate(30deg) contrast(1.2)';
-    }
+    if (videoDom) videoDom.srcObject = player.stream;
   } catch (e) { 
-    console.error(`[${currentRoom.value}] 播放失败:`, e); 
+    console.error("播放失败:", e); 
     isLive.value = false;
   }
 };

@@ -74,7 +74,7 @@ const startAuth = () => {
   isAuth.value = true;
   setTimeout(() => {
     if (form.username === '2024305279' && form.password === '123456') {
-      router.push('/House'); 
+      router.push('/LivePlayer'); 
     } else {
       isAuth.value = false;
       alert('身份验证失败');
