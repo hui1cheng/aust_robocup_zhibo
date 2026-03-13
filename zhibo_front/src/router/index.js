@@ -4,7 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../components/Login.vue'
 import LivePlayer from '../components/LivePlayer.vue'
 import UploadView from '@/components/UploadView.vue'
-
+import House from '@/components/House.vue'
 // 2. 定义路由规则
 const routes = [
   // 重定向：默认打开首页
@@ -29,6 +29,12 @@ const routes = [
     path: '/UploadView',          // 路由路径
     name: 'UploadView',           // 路由名称（可选，用于编程式导航）
     component: UploadView,        // 对应组件
+    meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
+  },
+  {
+    path: '/House',          // 路由路径
+    name: 'House',           // 路由名称（可选，用于编程式导航）
+    component: House,        // 对应组件
     meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
   },
 //   // 404路由（必须放在最后）
