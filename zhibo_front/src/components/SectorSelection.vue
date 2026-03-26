@@ -1,0 +1,31 @@
+<template>
+  <div class="picker-wrapper">
+    <h1 class="title">SELECT_OPERATIONAL_SECTOR</h1>
+    <div class="grid">
+      <div v-for="r in sectors" :key="r.key" @click="$router.push(`/house/${r.key}`)" class="card">
+        <div class="icon">{{ r.icon }}</div>
+        <div class="name">{{ r.name }}</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+const sectors = [
+  { key: '2d', name: '2D SOCCER', icon: '⚽' },
+  { key: '3d', name: '3D SOCCER', icon: '🎮' },
+  { key: 'rescue', name: 'RESCUE', icon: '🚨' }
+];
+</script>
+
+<style scoped>
+.picker-wrapper { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.grid { display: flex; gap: 30px; }
+.card {
+  width: 220px; padding: 40px; background: rgba(10, 20, 30, 0.8);
+  border: 1px solid rgba(0, 243, 255, 0.2); cursor: pointer; text-align: center;
+  transition: 0.3s;
+}
+.card:hover { border-color: #00f3ff; box-shadow: 0 0 20px #00f3ff; transform: translateY(-10px); }
+.icon { font-size: 50px; margin-bottom: 20px; }
+</style>

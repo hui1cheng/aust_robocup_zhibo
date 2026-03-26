@@ -6,8 +6,6 @@ import com.hui.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/user")
 public class UserController {
@@ -15,38 +13,28 @@ public class UserController {
     @Autowired
     private UserMapper userMapper;
 
-    // 新增
-    @PostMapping("/save")
-    public String save(@RequestBody User user) {
-        int rows = userMapper.insert(user);
-        return rows > 0 ? "新增成功" : "新增失败";
-    }
+    //只要负责登录就可以了
+    @PostMapping("/login")
+    public String login(@RequestBody User user) {
+        //1. 获取用户名和密码
+        String username = user.getUsername();
+        String password = user.getPassword();
 
-    // 根据学号查询（唯一）
-    @GetMapping("/{studentId}")
-    public User getByStudentId(@PathVariable String studentId) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getStudentId, studentId);
-        return userMapper.selectOne(wrapper);
-    }
+        //2. 判断用户名和密码不能为空
+        if (username == null || "".equals(username) || password == null || "".equals(password)) {
+            return "用户名或密码不能为空";
+        }
 
-    // 查询所有
-    @GetMapping("/list")
-    public List<User> list() {
-        return userMapper.selectList(null);
-    }
-
-    // 修改
-    @PutMapping("/update")
-    public String update(@RequestBody User user) {
-        int rows = userMapper.updateById(user);
-        return rows > 0 ? "修改成功" : "修改失败";
-    }
-
-    // 删除
-    @DeleteMapping("/{id}")
-    public String delete(@PathVariable Long id) {
-        int rows = userMapper.deleteById(id);
-        return rows > 0 ? "删除成功" : "删除失败";
+        //3. 判断用户是否存在
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getUsername, username);
+        User dbUser = userMapper.selectOne(queryWrapper);
+        if (dbUser == null) {
+            return "用户不存在";
+        }
+        if (!dbUser.getPassword().equals(password)) {
+            return "密码错误";
+        }
+        return "登录成功";
     }
 }

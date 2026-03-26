@@ -31,17 +31,34 @@ const routes = [
     component: UploadView,        // 对应组件
     meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
   },
-  {
-    path: '/House',          // 路由路径
-    name: 'House',           // 路由名称（可选，用于编程式导航）
-    component: House,        // 对应组件
-    meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
-  },
+  // {
+  //   path: '/House',          // 路由路径
+  //   name: 'House',           // 路由名称（可选，用于编程式导航）
+  //   component: House,        // 对应组件
+  //   meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
+  // },
 //   // 404路由（必须放在最后）
 //   {
 //     path: '/:pathMatch(.*)*', // 匹配所有未定义的路径
 //     component: LivePlayer
 //   }
+  {
+    path: '/house',
+    component: () => import('@/components/HouseLayout.vue'),
+    children: [
+      {
+        path: '', // 默认 /house 显示选择页
+        name: 'Selection',
+        component: () => import('@/components/SectorSelection.vue')
+      },
+      {
+        path: ':type', // 动态匹配 /house/2d, /house/3d 等
+        name: 'Monitor',
+        component: () => import('@/components/LiveMonitor.vue'),
+        props: true
+      }
+    ]
+  },
 ]
 
 // 3. 创建路由实例

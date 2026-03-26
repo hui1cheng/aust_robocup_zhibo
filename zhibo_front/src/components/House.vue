@@ -1,489 +1,313 @@
 <template>
-  <div class="cyber-monitor">
+  <div class="cyber-monitor" :style="themeVars">
     <div class="grid-overlay"></div>
     <div class="scanline"></div>
 
-    <!-- 头部增加房间切换 -->
-    <header class="cyber-header">
-      <div class="header-content">
-        <h1 class="glitch-text" :data-text="`ROBOCUP_${currentRoom.toUpperCase()}_SYSTEM_v2.0`">
-          ROBOCUP_{{ currentRoom.toUpperCase() }}_SYSTEM_v2.0
-        </h1>
-        <div :class="['status-panel', isLive ? 'live' : 'offline']">
-          <span class="pulse-dot"></span>
-          <span class="status-text">{{ isLive ? 'LINK_ESTABLISHED' : 'SIGNAL_LOST' }}</span>
+    <Transition name="fade-slide">
+      <div v-if="!hasSelectedRoom" class="room-picker-wrapper">
         </div>
-      </div>
-      <!-- 房间切换按钮 -->
-      <div class="room-switcher">
-        <button 
-          v-for="room in rooms" 
-          :key="room.key" 
-          @click="switchRoom(room.key)"
-          :class="['room-btn', { active: currentRoom === room.key }]"
-        >
-          <span class="room-icon">{{ room.icon }}</span> {{ room.name }}
-        </button>
-      </div>
-      <div class="top-bar"></div>
-    </header>
+    </Transition>
 
-    <main class="monitor-main">
-      <div v-if="isLive" class="video-container">
-        <div class="video-frame" :class="`theme-${currentRoom}`">
-          <div class="corner top-left"></div>
-          <div class="corner top-right"></div>
-          <div class="corner bottom-left"></div>
-          <div class="corner bottom-right"></div>
-          
-          <video id="rtc_media_player" autoplay controls muted class="glitch-video"></video>
-          
-          <div class="video-info-overlay">
-            <span class="stream-id">ID: {{ currentStream }}</span>
-            <span class="bitrate">BR: {{ roomConfig[currentRoom].bitrate }}</span>
-            <span class="latency">LATENCY: {{ roomConfig[currentRoom].latency }}</span>
-            <span class="room-tag">{{ roomConfig[currentRoom].tag }}</span>
+    <Transition name="fade">
+      <div v-if="hasSelectedRoom" class="monitor-container">
+        <header class="cyber-header">
+          <div class="header-left">
+            <button @click="exitRoom" class="back-btn">&lt;&lt; EXIT_SECTOR</button>
+            <h1 class="glitch-text" :data-text="`ROBOCUP_${currentRoom.toUpperCase()}`">
+              ROBOCUP_{{ currentRoom.toUpperCase() }}
+            </h1>
           </div>
-        </div>
-      </div>
+          <div class="room-info">
+            <span class="count-tag">ONLINE_NODES: {{ Object.keys(matchNodes).length }}</span>
+          </div>
+        </header>
 
-      <div v-else class="offline-terminal" :class="`theme-${currentRoom}`">
-        <div class="error-code">ERROR_404: NO_{{ currentRoom.toUpperCase() }}_SIGNAL_DETECTED</div>
-        <div class="dino-placeholder">{{ roomConfig[currentRoom].placeholderIcon }}</div>
-        <p class="loading-text">RESCANNING {{ currentRoom.toUpperCase() }} FREQUENCY...</p>
-      </div>
-    </main>
+        <main class="monitor-main">
+          <Transition name="scale-fade">
+            <div v-if="activeStream" class="video-overlay-layer">
+              <div class="video-window">
+                <div class="window-header">
+                  <span class="window-title">LIVE_FEED: {{ matchNodes[activeStream]?.displayName }}</span>
+                  <button @click="closeVideo" class="close-window-btn">× CLOSE_FEED</button>
+                </div>
+                
+                <div class="video-frame">
+                  <div class="corner top-left"></div><div class="corner top-right"></div>
+                  <div class="corner bottom-left"></div><div class="corner bottom-right"></div>
+                  <video id="rtc_media_player" autoplay controls muted></video>
+                </div>
+              </div>
+            </div>
+          </Transition>
 
-    <!-- 流切换按钮（按房间过滤） -->
-    <footer v-if="Object.keys(filteredStreams).length > 0" class="control-footer">
-      <div class="footer-label">ACTIVE_{{ currentRoom.toUpperCase() }}_NODES:</div>
-      <div class="button-group">
-        <button 
-          v-for="(ip, name) in filteredStreams" 
-          :key="name" 
-          @click="switchStream(name)"
-          :class="['cyber-btn', { active: currentStream === name }]"
-        >
-          <span class="btn-prefix">>></span> {{ name }}
-        </button>
+          <div class="nodes-grid" v-if="Object.keys(matchNodes).length > 0">
+            <div 
+              v-for="(info, name) in matchNodes" 
+              :key="name" 
+              @click="openVideo(name)"
+              class="node-card"
+              :class="{ 'active': activeStream === name }"
+            >
+              <div class="node-icon">📡</div>
+              <div class="node-name">{{ info.displayName }}</div>
+              <div class="node-meta">STREAM_ID: {{ name }}</div>
+              <div class="node-btn">ESTABLISH_LINK</div>
+            </div>
+          </div>
+
+          <div v-else class="empty-state">
+            <div class="scanner-circle"></div>
+            <p>NO_ACTIVE_GROUPS_DETECTED_IN_THIS_SECTOR</p>
+            <div class="loading-bar"></div>
+          </div>
+        </main>
       </div>
-    </footer>
+    </Transition>
   </div>
 </template>
-
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { RoboCupStreamer } from '@/utils/srs.sdk.js';
 
-// 核心状态
-const isLive = ref(false);
-const currentRoom = ref('2d'); // 默认2D房间
-const currentStream = ref('livestream_2d'); // 各房间默认流
-const allStreams = ref({});
+// 基础状态
+const hasSelectedRoom = ref(false); // 是否已选择房间
+const currentRoom = ref('');        // 当前房间 (2d/3d/rescue)
+const allStreams = ref({});         // SRS返回的所有流原始数据
+const activeStream = ref('');       // 当前正在观看的流ID (为空则不显示视频)
+
 let player = null;
 let timer = null;
 
-// 房间配置（差异化主题）
-const rooms = ref([
-  { key: '2d', name: '2D SOCCER', icon: '⚽', tag: '2D SOCCER' },
-  { key: '3d', name: '3D SOCCER', icon: '🎮', tag: '3D SIMULATION' },
-  { key: 'rescue', name: 'RESCUE', icon: '🚨', tag: 'DISASTER RESCUE' }
-]);
+const rooms = [
+  { key: '2d', name: '2D SOCCER', icon: '⚽', tag: 'STRATEGY_ANALYSIS' },
+  { key: '3d', name: '3D SOCCER', icon: '🎮', tag: 'PHYSICS_SIMULATION' },
+  { key: 'rescue', name: 'RESCUE', icon: '🚨', tag: 'TERRAIN_RECON' }
+];
 
-// 各房间差异化配置
-const roomConfig = ref({
-  '2d': { 
-    bitrate: '2500kbps', 
-    latency: 'LOW', 
-    placeholderIcon: '⚽',
-    themeColor: '#00f3ff' 
-  },
-  '3d': { 
-    bitrate: '4000kbps', 
-    latency: 'MEDIUM', 
-    placeholderIcon: '🎮',
-    themeColor: '#ff00ff' 
-  },
-  rescue: { 
-    bitrate: '3000kbps', 
-    latency: 'HIGH', 
-    placeholderIcon: '🚨',
-    themeColor: '#ff5500' 
+const roomConfig = {
+  '2d': { color: '#00f3ff', icon: '⚽' },
+  '3d': { color: '#ff00ff', icon: '🎮' },
+  'rescue': { color: '#ff5500', icon: '🚨' }
+};
+
+// --- 计算属性：解析并过滤当前房间的小组 ---
+const matchNodes = computed(() => {
+  if (!currentRoom.value) return {};
+  const result = {};
+  
+  Object.keys(allStreams.value).forEach(name => {
+    // 匹配规则: livestream_房间名_小组A(_小组B)
+    if (name.startsWith(`livestream_${currentRoom.value}`)) {
+      const parts = name.split('_');
+      const teamA = parts[2] || 'UNKNOWN_GROUP';
+      const teamB = parts[3] || null;
+      
+      result[name] = {
+        teamA: teamA.toUpperCase(),
+        teamB: teamB ? teamB.toUpperCase() : null,
+        displayName: teamB ? `${teamA} VS ${teamB}` : `${teamA}_UNIT`
+      };
+    }
+  });
+  return result;
+});
+
+const themeVars = computed(() => ({
+  '--theme-color': roomConfig[currentRoom.value]?.color || '#00f3ff'
+}));
+
+// --- 交互函数 ---
+
+// 选择房间进入
+const enterRoom = (roomKey) => {
+  currentRoom.value = roomKey;
+  hasSelectedRoom.value = true;
+  fetchStatus();
+};
+
+// 退出房间回到大厅
+const exitRoom = () => {
+  closeVideo();
+  hasSelectedRoom.value = false;
+  currentRoom.value = '';
+};
+
+// 打开视频窗口
+const openVideo = async (streamName) => {
+  activeStream.value = streamName;
+  // 等待 DOM 更新后初始化播放器
+  await nextTick();
+  initPlayer();
+};
+
+// 关闭视频窗口
+const closeVideo = () => {
+  if (player) {
+    player.close();
+    player = null;
   }
-});
+  activeStream.value = '';
+};
 
-// 按当前房间过滤流（流名称建议包含房间标识：livestream_2d/livestream_3d/livestream_rescue）
-const filteredStreams = computed(() => {
-  const filterKey = currentRoom.value;
-  return Object.fromEntries(
-    Object.entries(allStreams.value).filter(([name]) => 
-      name.includes(filterKey) || (filterKey === '2d' && !name.includes('3d') && !name.includes('rescue'))
-    )
-  );
-});
-
-// 检查流状态（按房间适配）
-const checkStatus = async () => {
+// 定时获取SRS流状态
+const fetchStatus = async () => {
   try {
     const res = await fetch('/api/v1/srs/streams');
     const data = await res.json();
     allStreams.value = data;
-    
-    // 按当前房间获取对应流
-    const roomStreams = filteredStreams.value;
-    const streamExists = !!roomStreams[currentStream.value];
-    
-    // 只有在没有播放且发现有流时才启动
-    if (streamExists && !isLive.value) {
-      isLive.value = true;
-      setTimeout(initPlayer, 500);
-    } 
-    // 如果流没了，记录日志，但不立刻 close 播放器
-    else if (!streamExists && isLive.value) {
-      console.warn(`Signal may be lost for ${currentRoom.value} room, keeping connection alive...`);
+
+    // 如果当前正在看的流断开了，自动关闭窗口
+    if (activeStream.value && !allStreams.value[activeStream.value]) {
+      closeVideo();
     }
-  } catch (err) { 
-    console.error(`API Error for ${currentRoom.value} room`, err); 
+  } catch (err) {
+    console.warn("SRS_OFFLINE", err);
   }
 };
 
+// 初始化 WebRTC 播放器
 const initPlayer = async () => {
-  if (player) player.close();
+  if (!activeStream.value) return;
   player = RoboCupStreamer();
+  const srsHost = window.location.hostname;
   
-  const srsHost = "192.168.31.203"; 
-  const url = `webrtc://${srsHost}/live/${currentStream.value}`;
-
-  // 关键：因为你的 Vite 已经帮你拼好了 /rtc/v1/play
-  // 所以这里只需要写 /rtc 即可
-  const apiUrl = `/rtc`; 
-
   try {
-    await player.play(url, apiUrl);
+    await player.play(`webrtc://${srsHost}/live/${activeStream.value}`, `/rtc`);
     const videoDom = document.getElementById('rtc_media_player');
     if (videoDom) {
       videoDom.srcObject = player.stream;
-      videoDom.play().catch(e => console.warn("Auto-play blocked:", e));
     }
-  } catch (e) { 
-    console.error("播放失败:", e); 
-    isLive.value = false;
+  } catch (e) {
+    console.error("RTC_PLAY_ERROR", e);
+    activeStream.value = '';
   }
 };
 
-// 切换流
-const switchStream = (name) => {
-  currentStream.value = name;
-  isLive.value = false;
-  checkStatus();
-};
-
-// 切换房间
-const switchRoom = (roomKey) => {
-  currentRoom.value = roomKey;
-  // 切换房间时重置默认流
-  currentStream.value = `livestream_${roomKey}`;
-  isLive.value = false;
-  checkStatus();
-};
-
-// 生命周期
 onMounted(() => {
-  checkStatus();
-  timer = setInterval(checkStatus, 3000);
+  timer = setInterval(fetchStatus, 3000);
 });
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer);
+  clearInterval(timer);
   if (player) player.close();
 });
 </script>
-
 <style scoped>
-/* 核心容器：全屏沉浸感 */
+/* 基础布局 */
 .cyber-monitor {
-  position: relative;
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   background: #020406;
-  color: #00f3ff;
-  font-family: 'Courier New', Courier, monospace;
+  color: var(--theme-color);
+  font-family: 'Courier New', monospace;
   overflow: hidden;
-  padding: 20px;
 }
 
-/* 背景装饰 */
+/* 装饰背景 */
 .grid-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-image: linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
-  background-size: 30px 30px;
-  pointer-events: none;
+  position: absolute; inset: 0;
+  background-image: linear-gradient(var(--theme-color) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--theme-color) 1px, transparent 1px);
+  background-size: 40px 40px; opacity: 0.05; pointer-events: none;
 }
-
 .scanline {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 2px;
-  background: rgba(0, 243, 255, 0.1);
-  box-shadow: 0 0 10px #00f3ff;
-  animation: scan 8s linear infinite;
-  z-index: 10;
-  pointer-events: none;
+  position: absolute; top: 0; width: 100%; height: 2px;
+  background: var(--theme-color); box-shadow: 0 0 10px var(--theme-color);
+  animation: scan 8s linear infinite; opacity: 0.3;
 }
+@keyframes scan { from { top: -10% } to { top: 110% } }
 
-@keyframes scan {
-  from { top: -10%; }
-  to { top: 110%; }
+/* 房间选择卡片 */
+.room-picker-wrapper {
+  position: relative; z-index: 10; height: 100%;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  background: rgba(0,0,0,0.85);
 }
-
-/* 头部样式 - 增加房间切换 */
-.cyber-header {
-  border-bottom: 2px solid #00f3ff;
-  padding-bottom: 10px;
-  margin-bottom: 30px;
-  position: relative;
+.picker-grid { display: flex; gap: 30px; }
+.room-card {
+  width: 240px; padding: 40px; background: rgba(10, 20, 30, 0.8);
+  border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); text-align: center;
 }
+.room-card:hover { transform: translateY(-10px); border-color: var(--theme-color); box-shadow: 0 0 20px var(--theme-color); }
+.room-icon { font-size: 50px; margin-bottom: 20px; }
 
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+/* 内部视图容器 */
+.monitor-container { height: 100%; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+.cyber-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--theme-color); padding-bottom: 15px; }
+
+/* 队伍卡片列表网格 */
+.nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+  padding: 40px 0;
+  overflow-y: auto;
 }
-
-/* 房间切换按钮 */
-.room-switcher {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-  justify-content: center;
-}
-
-.room-btn {
-  background: transparent;
-  border: 1px solid #00f3ff;
-  color: #00f3ff;
-  padding: 5px 15px;
+.group-card {
+  background: rgba(10, 20, 30, 0.7);
+  border: 1px solid rgba(0, 243, 255, 0.15);
+  padding: 30px;
   cursor: pointer;
   transition: 0.3s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.room-btn.active {
-  background: rgba(0, 243, 255, 0.2);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
-}
-
-.room-btn:hover {
-  border-color: #ff00ff;
-  color: #ff00ff;
-}
-
-.room-icon {
-  font-size: 16px;
-  margin-right: 5px;
-}
-
-/* 不同房间主题样式 */
-.room-btn.active[data-room="2d"] { border-color: #00f3ff; color: #00f3ff; }
-.room-btn.active[data-room="3d"] { border-color: #ff00ff; color: #ff00ff; }
-.room-btn.active[data-room="rescue"] { border-color: #ff5500; color: #ff5500; }
-
-.status-panel {
-  display: flex;
-  align-items: center;
-  padding: 5px 15px;
-  border: 1px solid currentColor;
-}
-
-.status-panel.live { color: #ff00ff; border-color: #ff00ff; box-shadow: 0 0 10px rgba(255, 0, 255, 0.3); }
-.status-panel.offline { color: #555; border-color: #333; }
-
-.pulse-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-right: 10px;
-  animation: pulse 1s infinite alternate;
-}
-
-@keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
-
-/* 视频框设计 - 按房间区分主题 */
-.video-container {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.video-frame {
   position: relative;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 10px;
-  border: 1px solid rgba(0, 243, 255, 0.3);
-  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.group-card:hover {
+  border-color: var(--theme-color);
+  background: rgba(0, 243, 255, 0.05);
+  transform: scale(1.02);
+}
+.group-title { font-size: 20px; font-weight: bold; margin-bottom: 15px; color: #fff; }
+.group-id { font-size: 10px; opacity: 0.5; font-family: monospace; }
+.connect-btn {
+  margin-top: 20px; display: inline-block;
+  font-size: 12px; padding: 5px 15px;
+  border: 1px solid var(--theme-color);
 }
 
-/* 2D房间主题色 */
-.video-frame.theme-2d {
-  border-color: rgba(0, 243, 255, 0.5);
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+/* 视频弹出窗口层 */
+.video-modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex; justify-content: center; align-items: center;
+  backdrop-filter: blur(8px);
 }
-.video-frame.theme-2d .corner { border-color: #00f3ff; }
-.video-frame.theme-2d .video-info-overlay { border-left-color: #00f3ff; }
-
-/* 3D房间主题色 */
-.video-frame.theme-3d {
-  border-color: rgba(255, 0, 255, 0.5);
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.1);
+.video-window {
+  width: 90%; max-width: 1100px;
+  background: #000; border: 1px solid var(--theme-color);
+  box-shadow: 0 0 50px rgba(0,0,0,1);
 }
-.video-frame.theme-3d .corner { border-color: #ff00ff; }
-.video-frame.theme-3d .video-info-overlay { border-left-color: #ff00ff; }
-
-/* 救援房间主题色 */
-.video-frame.theme-rescue {
-  border-color: rgba(255, 85, 0, 0.5);
-  box-shadow: 0 0 15px rgba(255, 85, 0, 0.1);
+.window-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 20px; background: var(--theme-color); color: #000;
 }
-.video-frame.theme-rescue .corner { border-color: #ff5500; }
-.video-frame.theme-rescue .video-info-overlay { border-left-color: #ff5500; }
-
-.corner {
-  position: absolute;
-  width: 20px; height: 20px;
-  border: 3px solid #00f3ff;
-}
-.top-left { top: -5px; left: -5px; border-right: 0; border-bottom: 0; }
-.top-right { top: -5px; right: -5px; border-left: 0; border-bottom: 0; }
-.bottom-left { bottom: -5px; left: -5px; border-right: 0; border-top: 0; }
-.bottom-right { bottom: -5px; right: -5px; border-left: 0; border-top: 0; }
-
-#rtc_media_player {
-  width: 100%;
-  display: block;
-  transition: filter 0.3s ease;
+.window-title { font-weight: bold; letter-spacing: 1px; }
+.close-btn { 
+  background: #000; color: var(--theme-color); border: none; 
+  padding: 4px 12px; cursor: pointer; font-weight: bold;
 }
 
-.video-info-overlay {
-  position: absolute;
-  bottom: 20px; left: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 5px 10px;
-  font-size: 12px;
-  color: inherit;
-  border-left: 3px solid #ff00ff;
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+.video-frame { position: relative; padding: 10px; background: #000; }
+#rtc_media_player { width: 100%; height: auto; display: block; }
+
+/* 空状态 */
+.empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  opacity: 0.4;
 }
-
-.room-tag {
-  text-transform: uppercase;
-  font-weight: bold;
+.scanner-circle {
+  width: 60px; height: 60px; border: 2px solid var(--theme-color);
+  border-radius: 50%; border-top-color: transparent;
+  animation: spin 1s linear infinite; margin-bottom: 20px;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* 离线状态 - 按房间区分 */
-.offline-terminal {
-  padding: 100px 0;
-  text-align: center;
-  transition: color 0.3s ease;
-}
+/* 动画 */
+.fade-enter-active, .fade-leave-active { transition: 0.4s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
-.offline-terminal.theme-2d { color: #00f3ff; }
-.offline-terminal.theme-3d { color: #ff00ff; }
-.offline-terminal.theme-rescue { color: #ff5500; }
-
-.error-code { 
-  font-weight: bold; 
-  margin-bottom: 20px;
-  font-size: 18px;
-}
-
-.dino-placeholder {
-  font-size: 80px;
-  filter: grayscale(1) contrast(2);
-  opacity: 0.5;
-  margin: 20px 0;
-}
-
-/* 底部按钮 */
-.control-footer {
-  margin-top: 50px;
-  border-top: 1px solid #333;
-  padding-top: 20px;
-}
-
-.button-group {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.cyber-btn {
-  background: transparent;
-  border: 1px solid #00f3ff;
-  color: #00f3ff;
-  padding: 10px 20px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-/* 按钮按房间主题变色 */
-.control-footer.theme-2d .cyber-btn { border-color: #00f3ff; color: #00f3ff; }
-.control-footer.theme-3d .cyber-btn { border-color: #ff00ff; color: #ff00ff; }
-.control-footer.theme-rescue .cyber-btn { border-color: #ff5500; color: #ff5500; }
-
-.cyber-btn:hover, .cyber-btn.active {
-  background: rgba(0, 243, 255, 0.2);
-  box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
-}
-
-/* 不同房间按钮hover效果 */
-.theme-3d .cyber-btn:hover, .theme-3d .cyber-btn.active {
-  background: rgba(255, 0, 255, 0.2);
-  box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-}
-
-.theme-rescue .cyber-btn:hover, .theme-rescue .cyber-btn.active {
-  background: rgba(255, 85, 0, 0.2);
-  box-shadow: 0 0 15px rgba(255, 85, 0, 0.5);
-}
-
-.btn-prefix { 
-  margin-right: 5px; 
-}
-.theme-2d .btn-prefix { color: #00f3ff; }
-.theme-3d .btn-prefix { color: #ff00ff; }
-.theme-rescue .btn-prefix { color: #ff5500; }
-
-.footer-label {
-  text-align: center;
-  margin-bottom: 15px;
-  color: inherit;
-  text-transform: uppercase;
-}
-
-/* 响应式适配 */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-  }
-  
-  .video-info-overlay {
-    flex-direction: column;
-    gap: 5px;
-    bottom: 10px;
-    left: 10px;
-    font-size: 10px;
-  }
-  
-  .room-switcher {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
+.scale-enter-active, .scale-leave-active { transition: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.scale-enter-from, .scale-leave-to { transform: scale(0.8); opacity: 0; }
 </style>

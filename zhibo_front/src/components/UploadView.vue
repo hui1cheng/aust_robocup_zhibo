@@ -1,209 +1,251 @@
 <template>
-  <div class="terminal-page">
-    <div class="scanline"></div>
-    <div class="noise"></div>
+  <div class="cyber-page">
+    <div class="bg-lines"></div>
+    
+    <div class="v-ambient-scan"></div>
 
     <div class="upload-container">
-      <div class="glitch-title" data-text="MINIO_UPLOADER">MINIO_UPLOADER</div>
-      <p class="system-path">PATH: /AUST/SYSTEM/UPLOADS</p>
+      <div class="card-header-line"></div>
+      
+      <div class="header-section">
+        <h1 class="glitch-title" data-text="MINIO_CORE_UPLOADER">MINIO_CORE_UPLOADER</h1>
+        <p class="system-path">DIRECTORY: /AUST/INTERNAL/ASSETS</p>
+      </div>
 
-      <div class="upload-area" :class="{ 'is-uploading': isUploading }" @click="$refs.fileInput.click()"
-        @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
+      <div 
+        class="upload-area" 
+        :class="{ 'is-uploading': isUploading, 'is-dragover': isDragOver }" 
+        @click="!isUploading && $refs.fileInput.click()"
+        @dragover.prevent="isDragOver = true" 
+        @dragleave.prevent="isDragOver = false" 
+        @drop.prevent="handleDrop"
+      >
         <input type="file" ref="fileInput" hidden @change="handleFileChange" />
 
-        <div v-if="!isUploading" class="prompt-text">
-          <span class="blink-cursor">></span> 准备就绪...
-          <br />
-          <span class="sub-text">[ 点击或拖拽文件至此区域 ]</span>
+        <div v-if="!isUploading" class="prompt-box">
+          <div class="upload-icon">📡</div>
+          <p class="main-prompt">> 准备就绪，等待数据注入...</p>
+          <p class="sub-prompt">[ 点击或拖拽文件至感应区 ]</p>
         </div>
 
         <div v-else class="progress-box">
-          <div class="loading-spinner"></div>
-          <div class="bar-container">
-            <div class="progress-bar" :style="{ width: progress + '%' }"></div>
+          <div class="loading-ring"></div>
+          <div class="bar-wrapper">
+            <div class="progress-fill" :style="{ width: progress + '%' }"></div>
           </div>
-          <p class="percent-text">UPLOADING: {{ progress }}%</p>
+          <p class="status-text">SYNCING_DATA: {{ progress }}%</p>
         </div>
       </div>
 
       <div class="console-output" v-if="uploadResult">
-        <p class="success" v-if="uploadResult.code === 200">
-          [ SUCCESS ] 文件已同步至 MinIO: {{ uploadResult.fileName }}
-        </p>
-        <p class="error" v-else>
-          [ FAILURE ] 错误信息: {{ uploadResult.msg }}
-        </p>
+        <div :class="['res-tag', uploadResult.code === 200 ? 'tag-ok' : 'tag-err']">
+          {{ uploadResult.code === 200 ? 'SUCCESS' : 'FAILURE' }}
+        </div>
+        <p class="res-msg">{{ uploadResult.code === 200 ? '文件同步完成: ' + uploadResult.fileName : '错误报告: ' + uploadResult.msg }}</p>
       </div>
 
-      <button class="return-btn" @click="$router.push('/')">EXIT_TERMINAL</button>
+      <button class="exit-btn" @click="$router.push('/')">
+        <span>[ TERMINATE_UPLOADER ]</span>
+      </button>
     </div>
   </div>
 </template>
-
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import axios from 'axios';
+import gsap from 'gsap';
 
-const isUploading = ref(false);
-const isDragOver = ref(false);
-const progress = ref(0);
-const uploadResult = ref(null);
+const router = useRouter();
 
+// 状态变量
+const isUploading = ref(false);    // 是否正在上传
+const isDragOver = ref(false);     // 是否正在拖拽文件经过
+const progress = ref(0);           // 上传进度 (0-100)
+const uploadResult = ref(null);    // 上传后的服务器响应
+const fileInput = ref(null);       // 绑定 input 元素
+
+// 页面入场动画
+onMounted(() => {
+  // 让上传卡片从中心微缩放并淡入，与登录页的转场衔接
+  gsap.from(".upload-container", {
+    duration: 1.2,
+    scale: 0.9,
+    opacity: 0,
+    y: 20,
+    ease: "power3.out"
+  });
+
+  // 标题文字微弱闪烁效果
+  gsap.from(".glitch-title", {
+    duration: 1.5,
+    opacity: 0,
+    delay: 0.5
+  });
+});
+
+/**
+ * 处理文件选择
+ */
 const handleFileChange = (e) => {
   const file = e.target.files[0];
   if (file) executeUpload(file);
 };
 
+/**
+ * 处理拖拽上传
+ */
 const handleDrop = (e) => {
   isDragOver.value = false;
   const file = e.dataTransfer.files[0];
   if (file) executeUpload(file);
 };
 
+/**
+ * 执行上传逻辑
+ */
 const executeUpload = async (file) => {
+  // 1. 初始化状态
   isUploading.value = true;
   uploadResult.value = null;
   progress.value = 0;
 
+  // 2. 准备数据
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    // 必须改成相对路径，Vite 才能根据 vite.config.js 里的 proxy 规则拦截它
+    // 3. 发送请求 (使用相对路径以配合 Vite Proxy)
     const res = await axios.post('/file/upload', formData, {
-      onUploadProgress: (p) => {
-        progress.value = Math.round((p.loaded * 100) / p.total);
+      onUploadProgress: (progressEvent) => {
+        // 计算百分比并赋值给 progress
+        if (progressEvent.total) {
+          progress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        }
       }
     });
-    uploadResult.value = res.data;
+
+    // 4. 处理成功结果
+    uploadResult.value = res.data; 
+    // 如果 code 为 200，说明上传成功
   } catch (err) {
-    uploadResult.value = { code: 500, msg: "无法连接到 8081 端口" };
+    // 5. 处理异常
+    console.error("Upload Error:", err);
+    uploadResult.value = { 
+      code: 500, 
+      msg: err.response?.data?.msg || "无法连接到 AUST 后端服务 [8081]" 
+    };
   } finally {
+    // 6. 结束上传状态
     isUploading.value = false;
   }
+};
+
+/**
+ * 退出终端
+ */
+const exitTerminal = () => {
+  // 可以在这里加入 maskRef.value.play() 如果你在这个页面也引入了 TransitionMask
+  router.push('/');
 };
 </script>
 
 <style scoped>
-.terminal-page {
-  background: #000;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #00ff41;
-  /* 经典的黑客绿 */
-  font-family: 'Courier New', monospace;
-  position: relative;
-  overflow: hidden;
+/* 1. 基础容器：保持与登录页一致的深色底 */
+.cyber-page {
+  position: fixed; inset: 0; background: #050505;
+  display: flex; justify-content: center; align-items: center;
+  overflow: hidden; font-family: 'Courier New', monospace;
 }
 
-/* 扫描线动画 */
-.scanline {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 4px, 3px 100%;
-  pointer-events: none;
-  z-index: 2;
+/* 2. 背景与扫描线逻辑 */
+.bg-lines {
+  position: absolute; width: 120%; height: 120%;
+  background-image: linear-gradient(0deg, transparent 24%, rgba(0, 243, 255, 0.03) 25%, transparent 27%),
+                    linear-gradient(90deg, transparent 24%, rgba(0, 243, 255, 0.03) 25%, transparent 27%);
+  background-size: 60px 60px;
+  animation: bg-float 20s linear infinite;
+}
+@keyframes bg-float {
+  0% { transform: translate(-5%, -5%); }
+  100% { transform: translate(0%, 0%); }
 }
 
+.v-ambient-scan {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.05), transparent);
+  height: 100px; animation: scan 8s linear infinite;
+}
+@keyframes scan { from { top: -100px; } to { top: 100%; } }
+
+/* 3. 上传卡片：高斯模糊 + 青色边框 */
 .upload-container {
-  width: 600px;
-  padding: 40px;
-  border: 1px solid #00ff41;
-  background: rgba(0, 20, 0, 0.8);
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  position: relative; width: 550px; padding: 40px;
+  background: rgba(10, 15, 20, 0.9);
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+  backdrop-filter: blur(15px);
   z-index: 10;
 }
 
+.card-header-line {
+  position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+  background: linear-gradient(to right, #00f3ff, #ff00ff);
+}
+
 .glitch-title {
-  font-size: 2rem;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 5px;
-  position: relative;
+  color: #00f3ff; font-size: 24px; text-align: center;
+  text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
 }
 
 .system-path {
-  font-size: 10px;
-  opacity: 0.6;
-  text-align: center;
-  margin-bottom: 30px;
+  color: rgba(0, 243, 255, 0.4); font-size: 10px; text-align: center; margin-top: 5px;
 }
 
+/* 4. 上传感应区：交互感增强 */
 .upload-area {
-  height: 200px;
-  border: 1px dashed #00ff41;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.3s;
+  margin-top: 30px; height: 180px;
+  border: 1px dashed rgba(0, 243, 255, 0.3);
+  display: flex; justify-content: center; align-items: center;
+  transition: 0.3s; cursor: pointer;
+}
+.upload-area:hover, .is-dragover {
+  background: rgba(0, 243, 255, 0.05);
+  border-color: #00f3ff;
+  box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.1);
 }
 
-.upload-area:hover {
-  background: rgba(0, 255, 65, 0.05);
-  box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.2);
+.main-prompt { color: #00f3ff; margin-bottom: 8px; }
+.sub-prompt { color: rgba(255, 255, 255, 0.3); font-size: 12px; }
+
+/* 进度条：青色流光 */
+.bar-wrapper {
+  width: 300px; height: 4px; background: rgba(255, 255, 255, 0.1);
+  margin: 15px auto; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: #00f3ff;
+  box-shadow: 0 0 10px #00f3ff; transition: width 0.3s;
 }
 
-.blink-cursor {
-  animation: blink 1s infinite;
+/* 5. 退出按钮：紫色调 */
+.exit-btn {
+  margin-top: 30px; width: 100%; background: transparent;
+  border: 1px solid #ff00ff; color: #ff00ff; padding: 12px;
+  cursor: pointer; transition: 0.3s; font-weight: bold;
+}
+.exit-btn:hover {
+  background: rgba(255, 0, 255, 0.1);
+  box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
 }
 
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-.progress-bar {
-  height: 10px;
-  background: #00ff41;
-  box-shadow: 0 0 10px #00ff41;
-  transition: width 0.3s;
-}
-
-.bar-container {
-  width: 300px;
-  height: 10px;
-  background: #111;
-  margin: 15px 0;
-}
-
+/* 控制台输出 */
 .console-output {
-  margin-top: 20px;
-  padding: 10px;
-  background: #001100;
-  font-size: 13px;
-  border-left: 2px solid #00ff41;
+  margin-top: 25px; padding: 15px; background: rgba(0, 0, 0, 0.4);
+  border-left: 2px solid #00f3ff;
 }
-
-.success {
-  color: #00ff41;
-}
-
-.error {
-  color: #ff003c;
-  border-left-color: #ff003c;
-}
-
-.return-btn {
-  margin-top: 30px;
-  width: 100%;
-  background: transparent;
-  border: 1px solid #00ff41;
-  color: #00ff41;
-  padding: 10px;
-  cursor: pointer;
-}
-
-.return-btn:hover {
-  background: #00ff41;
-  color: #000;
-}
+.res-tag { font-size: 10px; margin-bottom: 5px; font-weight: bold; }
+.tag-ok { color: #00f3ff; }
+.tag-err { color: #ff00ff; }
+.res-msg { color: #fff; font-size: 13px; opacity: 0.8; }
 </style>
