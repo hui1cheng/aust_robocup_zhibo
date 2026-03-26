@@ -1,21 +1,41 @@
+
+
 <template>
   <div class="picker-wrapper">
-    <h1 class="title">SELECT_OPERATIONAL_SECTOR</h1>
     <div class="grid">
-      <div v-for="r in sectors" :key="r.key" @click="$router.push(`/house/${r.key}`)" class="card">
-        <div class="icon">{{ r.icon }}</div>
-        <div class="name">{{ r.name }}</div>
-      </div>
+       <div 
+         v-for="r in sectors" 
+         :key="r.key" 
+         @click="handleSelect(r.key)" 
+         class="card magnetic-target"
+       >
+         <div class="card-frame-gif"></div>
+         <div class="icon">{{ r.icon }}</div>
+         <div class="name">{{ r.name }}</div>
+       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+// 如果还没引入背景，记得带上
+// import AsciiBackground from './AsciiBackground.vue';
+
+const router = useRouter();
+
 const sectors = [
   { key: '2d', name: '2D SOCCER', icon: '⚽' },
   { key: '3d', name: '3D SOCCER', icon: '🎮' },
   { key: 'rescue', name: 'RESCUE', icon: '🚨' }
 ];
+
+const handleSelect = (key) => {
+  console.log("Target Key:", key);
+  router.push({ name: 'Monitor', params: { type: key } })
+    .then(() => console.log("Jump Success"))
+    .catch(err => console.error("Jump Fail:", err));
+};
 </script>
 
 <style scoped>

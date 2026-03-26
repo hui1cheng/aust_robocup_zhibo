@@ -7,13 +7,13 @@
     <div class="upload-container">
       <div class="card-header-line"></div>
       
-      <div class="header-section">
+      <div class="header-section magnetic-target">
         <h1 class="glitch-title" data-text="MINIO_CORE_UPLOADER">MINIO_CORE_UPLOADER</h1>
         <p class="system-path">DIRECTORY: /AUST/INTERNAL/ASSETS</p>
       </div>
 
       <div 
-        class="upload-area" 
+        class="upload-area magnetic-targe" 
         :class="{ 'is-uploading': isUploading, 'is-dragover': isDragOver }" 
         @click="!isUploading && $refs.fileInput.click()"
         @dragover.prevent="isDragOver = true" 
@@ -22,10 +22,10 @@
       >
         <input type="file" ref="fileInput" hidden @change="handleFileChange" />
 
-        <div v-if="!isUploading" class="prompt-box">
+        <div v-if="!isUploading" class="prompt-box magnetic-target">
           <div class="upload-icon">📡</div>
-          <p class="main-prompt">> 准备就绪，等待数据注入...</p>
-          <p class="sub-prompt">[ 点击或拖拽文件至感应区 ]</p>
+          <p class="main-prompt magnetic-target">> 准备就绪，等待数据注入...</p>
+          <p class="sub-prompt magnetic-target">[ 点击或拖拽文件至感应区 ]</p>
         </div>
 
         <div v-else class="progress-box">
@@ -44,7 +44,7 @@
         <p class="res-msg">{{ uploadResult.code === 200 ? '文件同步完成: ' + uploadResult.fileName : '错误报告: ' + uploadResult.msg }}</p>
       </div>
 
-      <button class="exit-btn" @click="$router.push('/')">
+      <button class="exit-btn magnetic-targe" @click="$router.push('/')">
         <span>[ TERMINATE_UPLOADER ]</span>
       </button>
     </div>

@@ -1,5 +1,6 @@
 <template>
   <div class="cyber-page">
+    <AsciiBackground />
     <div class="bg-lines"></div>
     <div class="v-ambient-scan"></div>
 
@@ -21,20 +22,20 @@
         </div>
 
         <div class="form-body">
-          <div class="cyber-input">
+          <div class="cyber-input magnetic-target">
             <input v-model="form.username" type="text" placeholder="STUDENT_ID" required />
             <div class="input-bar"></div>
           </div>
-          <div class="cyber-input">
+          <div class="cyber-input magnetic-target">
             <input v-model="form.password" type="password" placeholder="ACCESS_CODE" @keyup.enter="startAuth" required />
             <div class="input-bar"></div>
           </div>
 
           <div class="btn-group">
-            <button @click="startAuth" :class="{ 'loading': isAuth }" class="auth-btn main-btn">
+            <button @click="startAuth" :class="{ 'loading': isAuth }" class="auth-btn main-btn magnetic-target">
               <span>{{ isAuth ? 'VERIFYING...' : '[ LOGIN ]' }}</span>
             </button>
-            <button @click="goToUpload" class="auth-btn upload-link">
+            <button @click="goToUpload" class="auth-btn upload-link magnetic-target">
               <span>[ UPLOAD ]</span>
             </button>
           </div>
@@ -42,7 +43,7 @@
 
         <div class="footer">
           <span class="id-tag">SECURED</span>
-          <a href="#" @click.prevent="resetFields" class="reg-link">[ RESET ]</a>
+          <!-- <a href="#" @click.prevent="resetFields" class="reg-link">[ RESET ]</a> -->
         </div>
       </div>
     </div>
@@ -59,6 +60,7 @@ import { useRouter } from 'vue-router';
 import gsap from 'gsap';
 import TransitionMask from './TransitionMask.vue';
 import CyberDino from './CyberDino.vue';
+import AsciiBackground from './AsciiBackground.vue';
 const router = useRouter();
 const isAuth = ref(false);
 const maskRef = ref(null);

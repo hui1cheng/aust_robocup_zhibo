@@ -43,7 +43,7 @@ const routes = [
 //     component: LivePlayer
 //   }
   {
-    path: '/house',
+    path: '/House',
     component: () => import('@/components/HouseLayout.vue'),
     children: [
       {
