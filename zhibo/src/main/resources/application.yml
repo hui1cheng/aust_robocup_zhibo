@@ -4,8 +4,8 @@ server:
 spring:
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 200MB
+      max-request-size: 200MB
   # 数据源核心配置（必须匹配你的PostgreSQL实际环境）
   datasource:
     driver-class-name: org.postgresql.Driver
@@ -34,5 +34,5 @@ mybatis-plus:
 minio:
   endpoint: http://localhost:9000
   accessKey: root
-  secretKey: Root1234!
+  secretKey: root1234
   bucketName: my-files # 启动后记得到控制台手动创建一个同名的 Bucket

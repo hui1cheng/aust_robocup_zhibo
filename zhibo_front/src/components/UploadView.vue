@@ -7,20 +7,9 @@
       <div class="glitch-title" data-text="MINIO_UPLOADER">MINIO_UPLOADER</div>
       <p class="system-path">PATH: /AUST/SYSTEM/UPLOADS</p>
 
-      <div 
-        class="upload-area" 
-        :class="{ 'is-uploading': isUploading }"
-        @click="$refs.fileInput.click()"
-        @dragover.prevent="isDragOver = true"
-        @dragleave.prevent="isDragOver = false"
-        @drop.prevent="handleDrop"
-      >
-        <input 
-          type="file" 
-          ref="fileInput" 
-          hidden 
-          @change="handleFileChange" 
-        />
+      <div class="upload-area" :class="{ 'is-uploading': isUploading }" @click="$refs.fileInput.click()"
+        @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false" @drop.prevent="handleDrop">
+        <input type="file" ref="fileInput" hidden @change="handleFileChange" />
 
         <div v-if="!isUploading" class="prompt-text">
           <span class="blink-cursor">></span> 准备就绪...
@@ -80,7 +69,8 @@ const executeUpload = async (file) => {
   formData.append('file', file);
 
   try {
-    const res = await axios.post(`http://${window.location.hostname}:8081/file/upload`, formData, {
+    // 必须改成相对路径，Vite 才能根据 vite.config.js 里的 proxy 规则拦截它
+    const res = await axios.post('/file/upload', formData, {
       onUploadProgress: (p) => {
         progress.value = Math.round((p.loaded * 100) / p.total);
       }
@@ -101,7 +91,8 @@ const executeUpload = async (file) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #00ff41; /* 经典的黑客绿 */
+  color: #00ff41;
+  /* 经典的黑客绿 */
   font-family: 'Courier New', monospace;
   position: relative;
   overflow: hidden;
@@ -110,7 +101,10 @@ const executeUpload = async (file) => {
 /* 扫描线动画 */
 .scanline {
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   background-size: 100% 4px, 3px 100%;
   pointer-events: none;
@@ -161,7 +155,11 @@ const executeUpload = async (file) => {
   animation: blink 1s infinite;
 }
 
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
 
 .progress-bar {
   height: 10px;
@@ -185,8 +183,14 @@ const executeUpload = async (file) => {
   border-left: 2px solid #00ff41;
 }
 
-.success { color: #00ff41; }
-.error { color: #ff003c; border-left-color: #ff003c; }
+.success {
+  color: #00ff41;
+}
+
+.error {
+  color: #ff003c;
+  border-left-color: #ff003c;
+}
 
 .return-btn {
   margin-top: 30px;

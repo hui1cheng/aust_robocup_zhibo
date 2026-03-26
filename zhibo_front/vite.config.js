@@ -1,8 +1,8 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-// 统一使用当前最新的局域网 IP
-const SERVER_IP = '10.4.116.183';
+
+const SERVER_IP = '192.168.31.203';
 
 export default defineConfig({
   plugins: [vue()],
@@ -10,29 +10,28 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
-      //  https: true, // 开启 HTTPS
+    allowedHosts: ['huicheng12.eu.cc'],
     host: '0.0.0.0',
-    port: 5173, // [改动] 换成 Vite 默认的 5173，避开 SRS 的 8080
+    port: 5173, 
     proxy: {
-      // 找 Java 后端处理业务和文件
+      // 捕获所有以 /api 开头的请求并转给 Java 后端
       '/api': {
         target: `http://${SERVER_IP}:8081`,
         changeOrigin: true
       },
+      // 捕获所有以 /file 开头的请求并转给 Java 后端
       '/file': {
         target: `http://${SERVER_IP}:8081`,
+        changeOrigin: true,
+        // 如果后端接口没有 /file 前缀，可能需要 rewrite，但通常 MinIO 适配层是需要的
+        // rewrite: (path) => path.replace(/^\/file/, '') 
+      },
+      '/rtc': {
+        target: `http://${SERVER_IP}:8082`,
         changeOrigin: true
       },
-      // 找 SRS 处理 WebRTC 信令
-      '/rtc': {
-        target: `http://${SERVER_IP}:1985`,
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/rtc/, '/rtc/v1/play') // 建议加上，明确信令路径
-      },
-      // 3. 找 SRS 的 HTTP 服务器 (如果你需要访问 SRS 内部的静态资源)
-      // 这就是你改成的 8082 端口
       '/srs-static': {
-        target: `http://10.134.58.230:8082`,
+        target: `http://${SERVER_IP}:8082`,
         changeOrigin: true
       }
     }

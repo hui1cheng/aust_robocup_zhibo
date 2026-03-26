@@ -89,7 +89,7 @@ const initPlayer = async () => {
   if (player) player.close();
   player = RoboCupStreamer();
   
-  const srsIp = "10.4.116.183"; 
+  const srsIp = "192.168.31.203"; 
   const url = `webrtc://${srsIp}/live/${currentStream.value}`;
   const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`;
 

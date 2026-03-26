@@ -147,20 +147,24 @@ const checkStatus = async () => {
   }
 };
 
-// 初始化播放器（按房间拼接流地址）
 const initPlayer = async () => {
   if (player) player.close();
   player = RoboCupStreamer();
   
-  // 固定用你的SRS服务器IP（如 192.168.31.203），无需动态获取
-  const srsIp = "192.168.31.203"; // 替换为你的SRS局域网IP
-  const url = `webrtc://${srsIp}/live/${currentStream.value}`;
-  const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`; // SRS的WebRTC API端口
+  const srsHost = "192.168.31.203"; 
+  const url = `webrtc://${srsHost}/live/${currentStream.value}`;
+
+  // 关键：因为你的 Vite 已经帮你拼好了 /rtc/v1/play
+  // 所以这里只需要写 /rtc 即可
+  const apiUrl = `/rtc`; 
 
   try {
     await player.play(url, apiUrl);
     const videoDom = document.getElementById('rtc_media_player');
-    if (videoDom) videoDom.srcObject = player.stream;
+    if (videoDom) {
+      videoDom.srcObject = player.stream;
+      videoDom.play().catch(e => console.warn("Auto-play blocked:", e));
+    }
   } catch (e) { 
     console.error("播放失败:", e); 
     isLive.value = false;
