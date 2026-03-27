@@ -112,7 +112,7 @@ const openVideo = async (id) => {
   player = RoboCupStreamer();
   
   // 这里的 IP 建议统一使用你之前的 SRS IP
-  const srsIp = "192.168.31.203"; 
+  const srsIp = "10.5.137.94"; 
   const url = `webrtc://${srsIp}/live/${id}`;
   const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`;
 

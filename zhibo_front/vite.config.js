@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-const SERVER_IP = '192.168.31.203';
+const SERVER_IP = '10.5.137.94';
 
 export default defineConfig({
   plugins: [vue()],
