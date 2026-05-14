@@ -28,7 +28,7 @@ public class MinioUtils {
         // 2. 上传文件
         minioClient.putObject(
             PutObjectArgs.builder().bucket(bucket).object(objectName)
-                .stream(stream, stream.available(), -1)
+                .stream(stream, stream.available(),     -1)
                 .contentType(contentType).build()
         );
 

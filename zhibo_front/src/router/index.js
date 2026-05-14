@@ -13,24 +13,25 @@ const routes = [
     redirect: '/Login'
   },
   // 首页路由
-  {
-    path: '/LivePlayer',          // 路由路径
-    name: 'LivePlayer',           // 路由名称（可选，用于编程式导航）
-    component: LivePlayer,        // 对应组件
-    meta: { title: '首页' } // 元信息（可选，用于设置页面标题、权限等）
-  },
+  // {
+  //   path: '/LivePlayer',          // 路由路径
+  //   name: 'LivePlayer',           // 路由名称（可选，用于编程式导航）
+  //   component: LivePlayer,        // 对应组件
+  //   meta: { title: '首页' } // 元信息（可选，用于设置页面标题、权限等）
+  // },
   {
     path: '/Login',          // 路由路径
     name: 'Login',           // 路由名称（可选，用于编程式导航）
     component: Login,        // 对应组件
     meta: { title: '登录' } // 元信息（可选，用于设置页面标题、权限等）
   },
-  {
-    path: '/UploadView',          // 路由路径
-    name: 'UploadView',           // 路由名称（可选，用于编程式导航）
-    component: UploadView,        // 对应组件
-    meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
-  },
+  
+  // {
+  //   path: '/UploadView',          // 路由路径
+  //   name: 'UploadView',           // 路由名称（可选，用于编程式导航）
+  //   component: UploadView,        // 对应组件
+  //   meta: { title: '上传' } // 元信息（可选，用于设置页面标题、权限等）
+  // },
   // {
   //   path: '/House',          // 路由路径
   //   name: 'House',           // 路由名称（可选，用于编程式导航）
@@ -67,14 +68,17 @@ const router = createRouter({
   routes // 挂载路由规则
 })
 
-// 4. 全局路由守卫（可选，示例：设置页面标题）
 router.beforeEach((to, from, next) => {
-  // 如果路由有元信息标题，设置浏览器标题
-  if (to.meta.title) {
-    document.title = to.meta.title
+  const token = localStorage.getItem('auth_token');
+  
+  // 如果去的不是登录页，且没有 token，强制跳转登录
+  if (to.path !== '/login' && !token) {
+    next('/login');
+  } else {
+    next();
   }
-  next() // 放行路由
-})
+});
+
 
 // 5. 导出路由实例
 export default router

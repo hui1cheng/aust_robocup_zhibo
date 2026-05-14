@@ -32,7 +32,7 @@
             <CyberDanmaku ref="danmakuRef" />
           </div>
 
-          <div class="console-box">
+          <!-- <div class="console-box">
             <span class="prompt">ROOT@{{ props.type.toUpperCase() }}:~#</span>
             <input 
               v-model="inputMsg" 
@@ -41,7 +41,7 @@
               autofocus
             />
             <button @click="handleSend" class="exec-btn">EXECUTE</button>
-          </div>
+          </div> -->
         </div>
       </div>
     </div>
@@ -112,7 +112,7 @@ const openVideo = async (id) => {
   player = RoboCupStreamer();
   
   // 这里的 IP 建议统一使用你之前的 SRS IP
-  const srsIp = "10.5.137.94"; 
+  const srsIp = "10.5.63.33"; 
   const url = `webrtc://${srsIp}/live/${id}`;
   const apiUrl = `http://${srsIp}:1985/rtc/v1/play/`;
 
@@ -124,7 +124,7 @@ const openVideo = async (id) => {
       videoElement.play();
     }
     // 成功进入时自动发一条系统弹幕
-    danmakuRef.value?.push(`LINK_ESTABLISHED: NODE_${id.toUpperCase()}`, 'SYS');
+    // danmakuRef.value?.push(`LINK_ESTABLISHED: NODE_${id.toUpperCase()}`, 'SYS');
   } catch (err) {
     console.error("STREAM_PLAY_FAILED", err);
     danmakuRef.value?.push("CONNECTION_TIMEOUT: SIGNAL_LOST", "SYS");

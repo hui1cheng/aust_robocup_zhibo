@@ -1,7 +1,6 @@
 <template>
   <div class="cyber-page">
     <div class="bg-lines"></div>
-    
     <div class="v-ambient-scan"></div>
 
     <div class="upload-container">
@@ -13,19 +12,27 @@
       </div>
 
       <div 
-        class="upload-area magnetic-targe" 
-        :class="{ 'is-uploading': isUploading, 'is-dragover': isDragOver }" 
-        @click="!isUploading && $refs.fileInput.click()"
-        @dragover.prevent="isDragOver = true" 
+        class="upload-area" 
+        :class="{ 
+          'is-uploading': isUploading, 
+          'is-dragover': isDragOver,
+          'is-locked': isCooldown 
+        }" 
+        @click="handleAreaClick"
+        @dragover.prevent="!isCooldown && (isDragOver = true)" 
         @dragleave.prevent="isDragOver = false" 
         @drop.prevent="handleDrop"
       >
         <input type="file" ref="fileInput" hidden @change="handleFileChange" />
 
-        <div v-if="!isUploading" class="prompt-box magnetic-target">
-          <div class="upload-icon">📡</div>
-          <p class="main-prompt magnetic-target">> 准备就绪，等待数据注入...</p>
-          <p class="sub-prompt magnetic-target">[ 点击或拖拽文件至感应区 ]</p>
+        <div v-if="!isUploading" class="prompt-box">
+          <div class="upload-icon">{{ isCooldown ? '⏳' : '📡' }}</div>
+          <p class="main-prompt">
+            {{ isCooldown ? `> 系统冷却中: ${cooldownText}` : '> 准备就绪，等待数据注入...' }}
+          </p>
+          <p class="sub-prompt">
+            {{ isCooldown ? '[ 物理链路已切断 ]' : '[ 点击或拖拽文件至感应区 ]' }}
+          </p>
         </div>
 
         <div v-else class="progress-box">
@@ -41,116 +48,140 @@
         <div :class="['res-tag', uploadResult.code === 200 ? 'tag-ok' : 'tag-err']">
           {{ uploadResult.code === 200 ? 'SUCCESS' : 'FAILURE' }}
         </div>
-        <p class="res-msg">{{ uploadResult.code === 200 ? '文件同步完成: ' + uploadResult.fileName : '错误报告: ' + uploadResult.msg }}</p>
+        <p class="res-msg">
+          {{ uploadResult.code === 200 ? '文件同步完成: ' + uploadResult.fileName : '错误报告: ' + uploadResult.msg }}
+        </p>
       </div>
 
-      <button class="exit-btn magnetic-targe" @click="$router.push('/')">
+      <button class="exit-btn" @click="$router.push('/')">
         <span>[ TERMINATE_UPLOADER ]</span>
       </button>
     </div>
   </div>
 </template>
+
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import gsap from 'gsap';
 
 const router = useRouter();
 
-// 状态变量
-const isUploading = ref(false);    // 是否正在上传
-const isDragOver = ref(false);     // 是否正在拖拽文件经过
-const progress = ref(0);           // 上传进度 (0-100)
-const uploadResult = ref(null);    // 上传后的服务器响应
-const fileInput = ref(null);       // 绑定 input 元素
+// --- 状态变量 ---
+const isUploading = ref(false);
+const isDragOver = ref(false);
+const progress = ref(0);
+const uploadResult = ref(null);
+const fileInput = ref(null);
 
-// 页面入场动画
+// --- 冷却逻辑 ---
+const COOLDOWN_MS = 5 * 60 * 1000; // 5分钟
+const lastUploadTime = ref(Number(localStorage.getItem('LAST_UPLOAD_TS')) || 0);
+const currentTime = ref(Date.now());
+let timer = null;
+
+// 每秒更新当前时间，驱动倒计时
 onMounted(() => {
-  // 让上传卡片从中心微缩放并淡入，与登录页的转场衔接
-  gsap.from(".upload-container", {
-    duration: 1.2,
-    scale: 0.9,
-    opacity: 0,
-    y: 20,
-    ease: "power3.out"
-  });
+  timer = setInterval(() => {
+    currentTime.value = Date.now();
+  }, 1000);
 
-  // 标题文字微弱闪烁效果
-  gsap.from(".glitch-title", {
-    duration: 1.5,
-    opacity: 0,
-    delay: 0.5
-  });
+  // 入场动画
+  gsap.from(".upload-container", { duration: 1.2, scale: 0.9, opacity: 0, y: 20, ease: "power3.out" });
 });
 
-/**
- * 处理文件选择
- */
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
+
+// 计算属性：是否处于冷却中
+const isCooldown = computed(() => {
+  return (currentTime.value - lastUploadTime.value) < COOLDOWN_MS;
+});
+
+// 计算属性：倒计时文字内容
+const cooldownText = computed(() => {
+  const remaining = Math.max(0, COOLDOWN_MS - (currentTime.value - lastUploadTime.value));
+  const m = Math.floor(remaining / 60000);
+  const s = Math.floor((remaining % 60000) / 1000);
+  return `${m}m ${s}s`;
+});
+
+// --- 事件处理 ---
+const handleAreaClick = () => {
+  if (isUploading.value || isCooldown.value) return;
+  fileInput.value.click();
+};
+
 const handleFileChange = (e) => {
   const file = e.target.files[0];
   if (file) executeUpload(file);
 };
 
-/**
- * 处理拖拽上传
- */
 const handleDrop = (e) => {
   isDragOver.value = false;
+  if (isCooldown.value) return;
   const file = e.dataTransfer.files[0];
   if (file) executeUpload(file);
 };
 
-/**
- * 执行上传逻辑
- */
+// --- 核心上传函数 ---
 const executeUpload = async (file) => {
-  // 1. 初始化状态
+  // 二次安全校验
+  if (isCooldown.value) return;
+
   isUploading.value = true;
   uploadResult.value = null;
   progress.value = 0;
 
-  // 2. 准备数据
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    // 3. 发送请求 (使用相对路径以配合 Vite Proxy)
     const res = await axios.post('/file/upload', formData, {
-      onUploadProgress: (progressEvent) => {
-        // 计算百分比并赋值给 progress
-        if (progressEvent.total) {
-          progress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        }
+      onUploadProgress: (p) => {
+        if (p.total) progress.value = Math.round((p.loaded * 100) / p.total);
       }
     });
 
-    // 4. 处理成功结果
-    uploadResult.value = res.data; 
-    // 如果 code 为 200，说明上传成功
+    uploadResult.value = res.data;
+
+    if (res.data.code === 200) {
+      // 记录成功时间并持久化
+      const now = Date.now();
+      lastUploadTime.value = now;
+      localStorage.setItem('LAST_UPLOAD_TS', now.toString());
+    }
   } catch (err) {
-    // 5. 处理异常
     console.error("Upload Error:", err);
     uploadResult.value = { 
       code: 500, 
       msg: err.response?.data?.msg || "无法连接到 AUST 后端服务 [8081]" 
     };
   } finally {
-    // 6. 结束上传状态
     isUploading.value = false;
   }
-};
-
-/**
- * 退出终端
- */
-const exitTerminal = () => {
-  // 可以在这里加入 maskRef.value.play() 如果你在这个页面也引入了 TransitionMask
-  router.push('/');
 };
 </script>
 
 <style scoped>
+/* 在原有样式基础上，补充锁定状态的样式 */
+.upload-area.is-locked {
+  cursor: not-allowed;
+  border-color: rgba(255, 0, 0, 0.3);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.upload-area.is-locked .main-prompt {
+  color: #ff5555;
+  text-shadow: 0 0 10px rgba(255, 85, 85, 0.5);
+}
+
+.upload-area.is-locked .upload-icon {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
 /* 1. 基础容器：保持与登录页一致的深色底 */
 .cyber-page {
   position: fixed; inset: 0; background: #050505;

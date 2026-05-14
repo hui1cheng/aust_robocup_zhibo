@@ -1,5 +1,6 @@
 server:
   port: 8081 # 服务端口，保持不变
+  address: 0.0.0.0
 
 spring:
   servlet:
@@ -10,7 +11,7 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     # 注意：localhost:5432 是PostgreSQL默认端口，root_db需替换为你实际的数据库名
-    url: jdbc:postgresql://localhost:5432/root_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8
+    url: jdbc:postgresql://101.35.143.171:5432/root_db?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8
     username: root # 替换为你的PostgreSQL实际用户名（默认是postgres，不是root）
     password: root # 替换为你的PostgreSQL实际密码
 

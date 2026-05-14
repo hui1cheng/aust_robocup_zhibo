@@ -1,11 +1,14 @@
 <template>
   <div class="cyber-page">
+    <div v-if="errorMessage" class="error-notice">
+      <span class="blink">!</span> ERROR_LOG: {{ errorMessage }}
+    </div>
     <AsciiBackground />
     <div class="bg-lines"></div>
     <div class="v-ambient-scan"></div>
 
     <TransitionMask ref="maskRef" />
-    
+
     <div class="login-card-wrapper">
       <div class="card-corner top-left"></div>
       <div class="card-corner top-right"></div>
@@ -14,7 +17,7 @@
 
       <div class="login-card">
         <div class="card-header-line"></div>
-        
+
         <div class="logo-section">
           <CyberDino class="compact-logo" />
           <h2 class="compact-title">安徽理工大学</h2>
@@ -27,7 +30,8 @@
             <div class="input-bar"></div>
           </div>
           <div class="cyber-input magnetic-target">
-            <input v-model="form.password" type="password" placeholder="ACCESS_CODE" @keyup.enter="startAuth" required />
+            <input v-model="form.password" type="password" placeholder="ACCESS_CODE" @keyup.enter="startAuth"
+              required />
             <div class="input-bar"></div>
           </div>
 
@@ -35,9 +39,9 @@
             <button @click="startAuth" :class="{ 'loading': isAuth }" class="auth-btn main-btn magnetic-target">
               <span>{{ isAuth ? 'VERIFYING...' : '[ LOGIN ]' }}</span>
             </button>
-            <button @click="goToUpload" class="auth-btn upload-link magnetic-target">
+            <!-- <button @click="goToUpload" class="auth-btn upload-link magnetic-target">
               <span>[ UPLOAD ]</span>
-            </button>
+            </button> -->
           </div>
         </div>
 
@@ -47,7 +51,7 @@
         </div>
       </div>
     </div>
-    
+
     <div class="v-logs">
       <div v-for="i in 3" :key="i" class="log-item">>> SYSLOG_RECV: OK</div>
     </div>
@@ -64,7 +68,8 @@ import AsciiBackground from './AsciiBackground.vue';
 const router = useRouter();
 const isAuth = ref(false);
 const maskRef = ref(null);
-
+// 修改 startAuth 函数
+import axios from 'axios';
 const form = reactive({
   username: '2024305279',
   password: '123456'
@@ -80,19 +85,41 @@ onMounted(() => {
   });
 });
 
-const startAuth = () => {
-  if (!form.username || !form.password) return;
+
+const errorMessage = ref(''); // 新增：用于存储错误信息
+
+const startAuth = async () => {
+  if (!form.username || !form.password) {
+    errorMessage.value = "REQUIRED: [ID/CODE]_";
+    return;
+  }
+  
   isAuth.value = true;
-  setTimeout(() => {
-    if (form.username === '2024305279') {
+  errorMessage.value = ''; // 每次点击重置错误
+
+  try {
+    const response = await axios.post('/api/user/login', form);
+
+    if (response.data.code === 200) {
+      localStorage.setItem('auth_token', response.data.token);
       maskRef.value.play(() => { router.push('/House'); });
     } else {
+      // 业务逻辑错误 (例如：密码错误)
+      errorMessage.value = `ACCESS_DENIED: ${response.data.msg || 'UNKNOWN_ERR'}_`;
       isAuth.value = false;
-      alert('验证失败');
     }
-  }, 1000);
+  } catch (error) {
+    // 网络级错误 (例如：404, 500, 跨域)
+    isAuth.value = false;
+    if (error.response) {
+      errorMessage.value = `SRV_FAULT: STATUS_${error.response.status}_`;
+    } else if (error.request) {
+      errorMessage.value = "NET_TIMEOUT: NO_RESPONSE_";
+    } else {
+      errorMessage.value = "SYSTEM_CRASH: AXIOS_CONFIG_ERR_";
+    }
+  }
 };
-
 const goToUpload = () => {
   maskRef.value.play(() => { router.push('/UploadView'); });
 };
@@ -100,80 +127,195 @@ const goToUpload = () => {
 const resetFields = () => { form.username = ''; form.password = ''; };
 </script>
 <style scoped>
+.error-notice {
+  margin-top: 15px;
+  color: #ff0055; /* 霓虹红 */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: rgba(255, 0, 85, 0.1);
+  padding: 5px 10px;
+  border-left: 3px solid #ff0055;
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
 
+.blink {
+  animation: blink-animation 0.8s steps(5, start) infinite;
+}
 
+@keyframes blink-animation {
+  to { visibility: hidden; }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
 /* 1. 确保最外层容器严格锁定屏幕尺寸，不产生滚动条 */
 .cyber-page {
-  position: fixed; 
-  top: 0; 
-  left: 0; 
-  width: 100vw; 
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
   height: 100vh;
   background: #000;
-  display: flex;         /* 使用 Flex */
-  justify-content: center; /* 水平居中 */
-  align-items: center;     /* 垂直居中 */
+  display: flex;
+  /* 使用 Flex */
+  justify-content: center;
+  /* 水平居中 */
+  align-items: center;
+  /* 垂直居中 */
   overflow: hidden;
 }
 
 /* 2. 修正包装器：使用 fixed 配合 50% 定位，彻底无视周围干扰 */
 .login-card-wrapper {
-  position: fixed; /* 改为 fixed */
+  position: fixed;
+  /* 改为 fixed */
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%); /* 核心：强制绝对居中 */
+  transform: translate(-50%, -50%);
+  /* 核心：强制绝对居中 */
   width: 340px;
-  z-index: 100; /* 提高层级，确保在所有背景和干扰层之上 */
+  z-index: 100;
+  /* 提高层级，确保在所有背景和干扰层之上 */
 }
 
 /* 3. 修正角标的定位（基于 wrapper） */
 .card-corner {
   position: absolute;
-  width: 15px; 
+  width: 15px;
   height: 15px;
   border: 2px solid #00f3ff;
   z-index: 11;
-  pointer-events: none; /* 防止遮挡点击 */
+  pointer-events: none;
+  /* 防止遮挡点击 */
 }
+
 /* 稍微往外弹一点，增加包裹感 */
-.top-left     { top: -15px; left: -15px; border-right: none; border-bottom: none; }
-.top-right    { top: -15px; right: -15px; border-left: none; border-bottom: none; }
-.bottom-left  { bottom: -15px; left: -15px; border-right: none; border-top: none; }
-.bottom-right { bottom: -15px; right: -15px; border-left: none; border-top: none; }
+.top-left {
+  top: -15px;
+  left: -15px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.top-right {
+  top: -15px;
+  right: -15px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.bottom-left {
+  bottom: -15px;
+  left: -15px;
+  border-right: none;
+  border-top: none;
+}
+
+.bottom-right {
+  bottom: -15px;
+  right: -15px;
+  border-left: none;
+  border-top: none;
+}
 
 @keyframes corner-pulse {
-  from { opacity: 0.3; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1.1); }
+  from {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1.1);
+  }
 }
 
 /* 按钮与输入框（保持紧凑版） */
-.logo-section { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
-.compact-logo { transform: scale(0.6); margin-bottom: -20px; }
-.compact-title { color: #00f3ff; font-size: 18px; margin: 0; text-shadow: 0 0 10px #00f3ff; }
-.compact-subtitle { color: rgba(0, 243, 255, 0.4); font-size: 9px; }
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
 
-.cyber-input { position: relative; margin-bottom: 12px; }
+.compact-logo {
+  transform: scale(0.6);
+  margin-bottom: -20px;
+}
+
+.compact-title {
+  color: #00f3ff;
+  font-size: 18px;
+  margin: 0;
+  text-shadow: 0 0 10px #00f3ff;
+}
+
+.compact-subtitle {
+  color: rgba(0, 243, 255, 0.4);
+  font-size: 9px;
+}
+
+.cyber-input {
+  position: relative;
+  margin-bottom: 12px;
+}
+
 .cyber-input input {
-  width: 100%; background: transparent; border: none;
-  border-bottom: 1px solid #222; padding: 8px 5px;
-  color: #00f3ff; outline: none; font-size: 13px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #222;
+  padding: 8px 5px;
+  color: #00f3ff;
+  outline: none;
+  font-size: 13px;
 }
 
-.btn-group { display: flex; gap: 10px; margin-top: 10px; }
-.auth-btn {
-  flex: 1; padding: 10px; background: transparent; 
-  border: 1px solid #00f3ff; color: #00f3ff; font-size: 11px;
-  cursor: pointer; transition: 0.3s;
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
 }
-.upload-link { border-color: #ff00ff; color: #ff00ff; }
+
+.auth-btn {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid #00f3ff;
+  color: #00f3ff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.upload-link {
+  border-color: #ff00ff;
+  color: #ff00ff;
+}
 
 /* 装饰背景保持 */
 .bg-lines {
-  position: absolute; inset: -50%;
+  position: absolute;
+  inset: -50%;
   background-image: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
   background-size: 50px 50px;
   animation: bg-move 20s linear infinite;
 }
-@keyframes bg-move { from { transform: translate(0,0); } to { transform: translate(50px, 50px); } }
+
+@keyframes bg-move {
+  from {
+    transform: translate(0, 0);
+  }
+
+  to {
+    transform: translate(50px, 50px);
+  }
+}
 </style>

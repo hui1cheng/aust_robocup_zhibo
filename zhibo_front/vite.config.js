@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-const SERVER_IP = '10.5.137.94';
+const SERVER_IP = '10.5.63.33';
 
 export default defineConfig({
   plugins: [vue()],
@@ -12,28 +12,39 @@ export default defineConfig({
   server: {
     allowedHosts: ['huicheng12.eu.cc'],
     host: '0.0.0.0',
-    port: 5173, 
+    port: 5173,
     proxy: {
       // 捕获所有以 /api 开头的请求并转给 Java 后端
       '/api': {
         target: `http://${SERVER_IP}:8081`,
-        changeOrigin: true
-      },
-      // 捕获所有以 /file 开头的请求并转给 Java 后端
-      '/file': {
-        target: `http://${SERVER_IP}:8081`,
         changeOrigin: true,
-        // 如果后端接口没有 /file 前缀，可能需要 rewrite，但通常 MinIO 适配层是需要的
-        // rewrite: (path) => path.replace(/^\/file/, '') 
+        // rewrite: (path) => path.replace(/^\/api/, ''),
+        // // 【添加调试配置】
+        // configure: (proxy, options) => {
+        //   proxy.on('proxyReq', (proxyReq, req, res) => {
+        //     console.log('>> [Vite 转发中] 原始路径:', req.url);
+        //     console.log('>> [Vite 转发中] 目标全路径:', options.target + proxyReq.path);
+        //   });
+        //   proxy.on('error', (err, req, res) => {
+        //     console.log('>> [Vite 转发错误]:', err);
+        //   });
+        // },
       },
-      '/rtc': {
-        target: `http://${SERVER_IP}:8082`,
-        changeOrigin: true
-      },
-      '/srs-static': {
-        target: `http://${SERVER_IP}:8082`,
-        changeOrigin: true
+        // 捕获所有以 /file 开头的请求并转给 Java 后端
+        '/file': {
+          target: `http://${SERVER_IP}:8081`,
+          changeOrigin: true,
+          // 如果后端接口没有 /file 前缀，可能需要 rewrite，但通常 MinIO 适配层是需要的
+          // rewrite: (path) => path.replace(/^\/file/, '') 
+        },
+        '/rtc': {
+          target: `http://${SERVER_IP}:8082`,
+          changeOrigin: true
+        },
+        '/srs-static': {
+          target: `http://${SERVER_IP}:8082`,
+          changeOrigin: true
+        }
       }
     }
-  }
-})
+  })

@@ -4,7 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.hui.entity.User;
 import com.hui.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/user")
@@ -13,28 +18,44 @@ public class UserController {
     @Autowired
     private UserMapper userMapper;
 
-    //只要负责登录就可以了
     @PostMapping("/login")
-    public String login(@RequestBody User user) {
-        //1. 获取用户名和密码
+    public ResponseEntity<?> login(@RequestBody User user) {
+        System.out.println(">>>> [后端收到请求] 学号: " + user.getUsername());
+        Map<String, Object> result = new HashMap<>();
+
         String username = user.getUsername();
         String password = user.getPassword();
 
-        //2. 判断用户名和密码不能为空
-        if (username == null || "".equals(username) || password == null || "".equals(password)) {
-            return "用户名或密码不能为空";
+        // 1. 校验非空
+        if (username == null || username.isEmpty() || password == null || password.isEmpty()) {
+            result.put("msg", "用户名或密码不能为空");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
         }
 
-        //3. 判断用户是否存在
+        // 2. 查询用户
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, username);
         User dbUser = userMapper.selectOne(queryWrapper);
+
         if (dbUser == null) {
-            return "用户不存在";
+            result.put("msg", "用户不存在");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
+
+        // 3. 校验密码
         if (!dbUser.getPassword().equals(password)) {
-            return "密码错误";
+            result.put("msg", "密码错误");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
-        return "登录成功";
+
+        // 4. 登录成功，生成 Token
+        String token = "1212";
+
+        result.put("code", 200);
+        result.put("msg", "登录成功");
+        result.put("token", token);
+        result.put("username", username);
+
+        return ResponseEntity.ok(result);
     }
 }
